@@ -1,20 +1,11 @@
 {
   "util1": [
     {
-      "name": "ddddadssdddaa",
+      "name": "ddddadssddddaa",
       "expirationDate": "2025-01-08",
       "categories": [
-        "Băuturi"
-      ]
-    },
-    {
-      "name": "qeewqewqeqweqw",
-      "expirationDate": "2025-01-14",
-      "categories": [
-        "Carne",
-        "Lactate",
         "Băuturi",
-        "Fructe"
+        "Dulciuri"
       ]
     }
   ],

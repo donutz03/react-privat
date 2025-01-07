@@ -17,6 +17,8 @@ function App() {
     expirationDate: '', 
     categories: [] 
   });
+  const today = new Date().toISOString().split('T')[0];
+
   
   // New state for authentication
   const [currentUser, setCurrentUser] = useState(localStorage.getItem('currentUser'));
@@ -156,6 +158,35 @@ function App() {
       .catch((err) => console.error('Eroare la editare:', err));
   };
 
+  const deleteUnavailableFood = (index) => {
+    fetch(`http://localhost:5000/foods-unavailable/${currentUser}/${index}`, {
+      method: 'DELETE',
+    })
+      .then((res) => res.json())
+      .then((data) => setUnavailableFoods(data))
+      .catch((err) => console.error('Eroare la ștergere:', err));
+  };
+  
+  const editUnavailableFoodItem = (index) => {
+    if (!editFood.name || !editFood.expirationDate || editFood.categories.length === 0) {
+      alert('Vă rugăm completați toate câmpurile și selectați cel puțin o categorie!');
+      return;
+    }
+  
+    fetch(`http://localhost:5000/foods-unavailable/${currentUser}/${index}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editFood),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setUnavailableFoods(data);
+        setEditingIndex(null);
+        setEditFood({ name: '', expirationDate: '', categories: [] });
+      })
+      .catch((err) => console.error('Eroare la editare:', err));
+  };
+
   const handleEditClick = (index) => {
     setEditingIndex(index);
     const food = foods[index];
@@ -227,7 +258,15 @@ function App() {
     );
   }
 
-  const FoodTable = ({ foods, isAvailableTable = true }) => (
+  const FoodTable = ({  foods, 
+    isAvailableTable = true,
+    onDelete,
+    editingIndex,
+    editFood,
+    setEditFood,
+    onEditSave,
+    onEditClick,
+    handleEditCategoryChange }) => (
     <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
       <thead>
         <tr>
@@ -240,40 +279,73 @@ function App() {
       <tbody>
         {foods.map((food, index) => (
           <tr key={index}>
-            <td style={{ border: '1px solid #ddd', padding: '8px' }}>{food.name}</td>
-            <td style={{ border: '1px solid #ddd', padding: '8px' }}>{food.expirationDate}</td>
-            <td style={{ border: '1px solid #ddd', padding: '8px' }}>{food.categories.join(', ')}</td>
-            <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-              <button 
-                onClick={() => handleEditClick(index)}
-                style={{ marginRight: '5px', padding: '4px 8px', backgroundColor: '#2196F3', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-              >
-                Editează
-              </button>
-              <button 
-                onClick={() => deleteFood(index)}
-                style={{ marginRight: '5px', padding: '4px 8px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-              >
-                Șterge
-              </button>
-              {isAvailableTable ? (
-                food.isNearExpiration && (
+             {editingIndex === index ? (
+              // Edit mode
+              <>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                  <input
+                    type="text"
+                    value={editFood.name}
+                    onChange={(e) => setEditFood(prev => ({ ...prev, name: e.target.value }))}
+                    style={{ width: '100%', padding: '4px' }}
+                  />
+                </td>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                  <input
+                    type="date"
+                    value={editFood.expirationDate}
+                    min={today}
+                    onChange={(e) => setEditFood(prev => ({ ...prev, expirationDate: e.target.value }))}
+                    style={{ width: '100%', padding: '4px' }}
+                  />
+                </td>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                  <CategoryCheckboxes
+                    selectedCategories={editFood.categories}
+                    onChange={handleEditCategoryChange}
+                  />
+                </td>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>
                   <button 
-                    onClick={() => handleMarkAvailability(index, true)}
-                    style={{ padding: '4px 8px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                    onClick={() => onEditSave(index)}
+                    style={{ marginRight: '5px', padding: '4px 8px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                   >
-                    Marchează disponibil
+                    Salvează
                   </button>
-                )
-              ) : (
-                <button 
-                  onClick={() => handleMarkAvailability(index, false)}
-                  style={{ padding: '4px 8px', backgroundColor: '#FF9800', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                >
-                  Marchează indisponibil
-                </button>
-              )}
-            </td>
+                  <button 
+                    onClick={() => {
+                      setEditingIndex(null);
+                      setEditFood({ name: '', expirationDate: '', categories: [] });
+                    }}
+                    style={{ padding: '4px 8px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    Anulează
+                  </button>
+                </td>
+              </>
+            ) : (
+              // Display mode
+              <>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{food.name}</td>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{food.expirationDate}</td>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{food.categories.join(', ')}</td>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                  <button 
+                    onClick={() => onEditClick(index, food)}
+                    style={{ marginRight: '5px', padding: '4px 8px', backgroundColor: '#2196F3', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    Editează
+                  </button>
+                  <button 
+                    onClick={() => onDelete(index)}
+                    style={{ marginRight: '5px', padding: '4px 8px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    Șterge
+                  </button>
+                  {/* ... rest of your buttons ... */}
+                </td>
+              </>
+            )}
           </tr>
         ))}
       </tbody>
@@ -384,14 +456,48 @@ function App() {
       </div>
 
       <div>
-        <h2>Produse Disponibile</h2>
-        <FoodTable foods={foods} isAvailableTable={true} />
-      </div>
+  <h2>Produse Disponibile</h2>
+  <FoodTable 
+    foods={foods} 
+    isAvailableTable={true}
+    onDelete={deleteFood}
+    editingIndex={editingIndex}
+    editFood={editFood}
+    setEditFood={setEditFood}
+    onEditSave={editFoodItem}
+    onEditClick={(index, food) => {
+      setEditingIndex(index);
+      setEditFood({
+        name: food.name,
+        expirationDate: food.expirationDate,
+        categories: food.categories
+      });
+    }}
+    handleEditCategoryChange={handleEditCategoryChange}
+  />
+</div>
 
-      <div style={{ marginTop: '40px' }}>
-        <h2>Produse Marcate ca Disponibile</h2>
-        <FoodTable foods={unavailableFoods} isAvailableTable={false} />
-      </div>
+<div style={{ marginTop: '40px' }}>
+  <h2>Produse Marcate ca Disponibile</h2>
+  <FoodTable 
+    foods={unavailableFoods} 
+    isAvailableTable={false}
+    onDelete={deleteUnavailableFood}
+    editingIndex={editingIndex}
+    editFood={editFood}
+    setEditFood={setEditFood}
+    onEditSave={editUnavailableFoodItem}
+    onEditClick={(index, food) => {
+      setEditingIndex(index);
+      setEditFood({
+        name: food.name,
+        expirationDate: food.expirationDate,
+        categories: food.categories
+      });
+    }}
+    handleEditCategoryChange={handleEditCategoryChange}
+  />
+</div>
     </div>
   );
 }
