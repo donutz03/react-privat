@@ -1,0 +1,12 @@
+[
+  "Fructe",
+  "Legume",
+  "Carne",
+  "Lactate",
+  "Cereale",
+  "Conserve",
+  "Dulciuri",
+  "Băuturi",
+  "Condimente",
+  "Produse de panificație"
+]

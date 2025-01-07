@@ -1,1 +1,17 @@
-["dadasda"]
+[
+  {
+    "name": "dadada",
+    "expirationDate": "2025-01-09",
+    "categories": [
+      "Fructe",
+      "Lactate"
+    ]
+  },
+  {
+    "name": "dddddd",
+    "expirationDate": "2025-01-11",
+    "categories": [
+      "Băuturi"
+    ]
+  }
+]
