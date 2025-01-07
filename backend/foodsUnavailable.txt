@@ -14,6 +14,13 @@
         "Dulciuri",
         "Băuturi"
       ]
+    },
+    {
+      "name": "adcdad",
+      "expirationDate": "2025-01-08",
+      "categories": [
+        "Băuturi"
+      ]
     }
   ],
   "util2": [],

@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import Login from './Login';
 import Register from './Register';
 import NotificationBell from './NotificationBell';
+import ExpiredProductsTable from './ExpiredProductsTable';
+import FoodTable from './FoodTable';
+import CategoryCheckboxes from './CategoryCheckboxes';
 
 
 function App() {
@@ -19,7 +22,6 @@ function App() {
     expirationDate: '', 
     categories: [] 
   });
-  const today = new Date().toISOString().split('T')[0];
 
   
   // New state for authentication
@@ -120,16 +122,7 @@ function App() {
     loadAllFoods();
   };
 
-  const handleDeleteExpiredProducts = () => {
-    fetch(`http://localhost:5000/foods-expired/${currentUser}`, {
-      method: 'DELETE',
-    })
-      .then((res) => res.json())
-      .then(() => {
-        setExpiredFoods([]); // Clear expired foods from state
-      })
-      .catch((err) => console.error('Eroare la ștergerea produselor expirate:', err));
-  };
+  
 
 
   // Rest of your existing functions, modified to include user information
@@ -230,61 +223,9 @@ function App() {
     });
   };
 
-  const ExpiredProductsTable = ({ foods }) => (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-        <h2>Produse Expirate</h2>
-        {foods.length > 0 && (
-          <button
-            onClick={handleDeleteExpiredProducts}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#f44336',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
-            Ștergere produse expirate
-          </button>
-        )}
-      </div>
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
-        <thead>
-          <tr>
-            <th style={{ border: '1px solid #ddd', padding: '8px' }}>Aliment</th>
-            <th style={{ border: '1px solid #ddd', padding: '8px' }}>Data Expirare</th>
-            <th style={{ border: '1px solid #ddd', padding: '8px' }}>Categorii</th>
-          </tr>
-        </thead>
-        <tbody>
-          {foods.map((food, index) => (
-            <tr key={index}>
-              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{food.name}</td>
-              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{food.expirationDate}</td>
-              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{food.categories.join(', ')}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+  
 
-  const CategoryCheckboxes = ({ selectedCategories, onChange }) => (
-    <div className="categories-container" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', margin: '10px 0' }}>
-      {availableCategories.map((category) => (
-        <label key={category} style={{ display: 'flex', alignItems: 'center', marginRight: '10px' }}>
-          <input
-            type="checkbox"
-            checked={selectedCategories.includes(category)}
-            onChange={() => onChange(category)}
-          />
-          <span style={{ marginLeft: '5px' }}>{category}</span>
-        </label>
-      ))}
-    </div>
-  );
+ 
 
   if (!currentUser) {
     return (
@@ -332,100 +273,7 @@ function App() {
     );
   }
 
-  const FoodTable = ({  foods, 
-    isAvailableTable = true,
-    onDelete,
-    editingIndex,
-    editFood,
-    setEditFood,
-    onEditSave,
-    onEditClick,
-    handleEditCategoryChange }) => (
-    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
-      <thead>
-        <tr>
-          <th style={{ border: '1px solid #ddd', padding: '8px' }}>Aliment</th>
-          <th style={{ border: '1px solid #ddd', padding: '8px' }}>Data Expirare</th>
-          <th style={{ border: '1px solid #ddd', padding: '8px' }}>Categorii</th>
-          <th style={{ border: '1px solid #ddd', padding: '8px' }}>Acțiuni</th>
-        </tr>
-      </thead>
-      <tbody>
-        {foods.map((food, index) => (
-          <tr key={index}>
-             {editingIndex === index ? (
-              // Edit mode
-              <>
-                <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                  <input
-                    type="text"
-                    value={editFood.name}
-                    onChange={(e) => setEditFood(prev => ({ ...prev, name: e.target.value }))}
-                    style={{ width: '100%', padding: '4px' }}
-                  />
-                </td>
-                <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                  <input
-                    type="date"
-                    value={editFood.expirationDate}
-                    min={today}
-                    onChange={(e) => setEditFood(prev => ({ ...prev, expirationDate: e.target.value }))}
-                    style={{ width: '100%', padding: '4px' }}
-                  />
-                </td>
-                <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                  <CategoryCheckboxes
-                    selectedCategories={editFood.categories}
-                    onChange={handleEditCategoryChange}
-                  />
-                </td>
-                <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                  <button 
-                    onClick={() => onEditSave(index)}
-                    style={{ marginRight: '5px', padding: '4px 8px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                  >
-                    Salvează
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setUnavailableEditingIndex(null);
-                      setEditFood({ name: '', expirationDate: '', categories: [] });
-                    }}
-                    style={{ padding: '4px 8px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                  >
-                    Anulează
-                  </button>
-                </td>
-              </>
-            ) : (
-              // Display mode
-              <>
-                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{food.name}</td>
-                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{food.expirationDate}</td>
-                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{food.categories.join(', ')}</td>
-                <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                  <button 
-                    onClick={() => onEditClick(index, food)}
-                    style={{ marginRight: '5px', padding: '4px 8px', backgroundColor: '#2196F3', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                  >
-                    Editează
-                  </button>
-                  <button 
-                    onClick={() => onDelete(index)}
-                    style={{ marginRight: '5px', padding: '4px 8px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                  >
-                    Șterge
-                  </button>
-                  {/* ... rest of your buttons ... */}
-                </td>
-              </>
-            )}
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-
+  
   if (!currentUser) {
     return (
       <div>
@@ -518,6 +366,7 @@ function App() {
             <CategoryCheckboxes
               selectedCategories={selectedCategories}
               onChange={handleCategoryChange}
+              availableCategories={availableCategories}
             />
           </div>
           <button 
@@ -532,6 +381,8 @@ function App() {
       <div>
   <h2>Produsele mele</h2>
   <FoodTable 
+  setUnavailableEditingIndex={setUnavailableEditingIndex}
+  availableCategories={availableCategories}
     foods={foods} 
     isAvailableTable={true}
     onDelete={deleteFood}
@@ -554,6 +405,8 @@ function App() {
 <div style={{ marginTop: '40px' }}>
   <h2>Produse Marcate ca Disponibile</h2>
   <FoodTable 
+    availableCategories={availableCategories}
+    setUnavailableEditingIndex={setUnavailableEditingIndex}
     foods={unavailableFoods} 
     isAvailableTable={false}
     onDelete={deleteUnavailableFood}
@@ -574,7 +427,7 @@ function App() {
 </div>
 
 <div style={{ marginTop: '40px' }}>
-        <ExpiredProductsTable foods={expiredFoods} />
+        <ExpiredProductsTable foods={expiredFoods} currentUser={currentUser} setExpiredFoods={setExpiredFoods}/>
       </div>
     </div>
   );
