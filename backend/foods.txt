@@ -7,15 +7,6 @@
         "Fructe",
         "Conserve"
       ]
-    },
-    {
-      "name": "dddddddd",
-      "expirationDate": "2025-01-03",
-      "categories": [
-        "Băuturi",
-        "Condimente",
-        "Produse de panificație"
-      ]
     }
   ],
   "util2": [
