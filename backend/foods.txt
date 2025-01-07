@@ -1,11 +1,20 @@
 {
   "util1": [
     {
-      "name": "aaaaa",
-      "expirationDate": "2025-01-20",
+      "name": "ddddadssdddaa",
+      "expirationDate": "2025-01-08",
       "categories": [
-        "Fructe",
-        "Conserve"
+        "Băuturi"
+      ]
+    },
+    {
+      "name": "qeewqewqeqweqw",
+      "expirationDate": "2025-01-14",
+      "categories": [
+        "Carne",
+        "Lactate",
+        "Băuturi",
+        "Fructe"
       ]
     }
   ],
