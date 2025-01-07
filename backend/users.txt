@@ -1,5 +1,8 @@
 {
   "util1": {
     "password": "util1"
+  },
+  "util2": {
+    "password": "util2"
   }
 }

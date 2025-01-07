@@ -1,17 +1,30 @@
-[
-  {
-    "name": "dadada",
-    "expirationDate": "2025-01-09",
-    "categories": [
-      "Fructe",
-      "Lactate"
-    ]
-  },
-  {
-    "name": "dddddd",
-    "expirationDate": "2025-01-11",
-    "categories": [
-      "Băuturi"
-    ]
-  }
-]
+{
+  "util1": [
+    {
+      "name": "aaaaa",
+      "expirationDate": "2025-01-20",
+      "categories": [
+        "Fructe",
+        "Conserve"
+      ]
+    },
+    {
+      "name": "dddddddd",
+      "expirationDate": "2025-01-03",
+      "categories": [
+        "Băuturi",
+        "Condimente",
+        "Produse de panificație"
+      ]
+    }
+  ],
+  "util2": [
+    {
+      "name": "aaaaaa",
+      "expirationDate": "2025-01-10",
+      "categories": [
+        "Cereale"
+      ]
+    }
+  ]
+}
