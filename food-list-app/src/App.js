@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import Login from './Login';
+import Register from './Register';
 
 function App() {
   const [foods, setFoods] = useState([]);
@@ -12,27 +14,32 @@ function App() {
     expirationDate: '', 
     categories: [] 
   });
+  
+  // New state for authentication
+  const [currentUser, setCurrentUser] = useState(localStorage.getItem('currentUser'));
+  const [showRegister, setShowRegister] = useState(false);
 
   useEffect(() => {
-    // Load foods with error handling
-    fetch('http://localhost:5000/foods')
-      .then((res) => res.json())
-      .then((data) => {
-        // Ensure each food item has a categories array
-        const sanitizedData = data.map(food => ({
-          ...food,
-          categories: Array.isArray(food.categories) ? food.categories : []
-        }));
-        setFoods(sanitizedData);
-      })
-      .catch((err) => console.error('Eroare la încărcarea alimentelor:', err));
+    if (currentUser) {
+      // Load foods for current user
+      fetch(`http://localhost:5000/foods/${currentUser}`)
+        .then((res) => res.json())
+        .then((data) => {
+          const sanitizedData = data.map(food => ({
+            ...food,
+            categories: Array.isArray(food.categories) ? food.categories : []
+          }));
+          setFoods(sanitizedData);
+        })
+        .catch((err) => console.error('Eroare la încărcarea alimentelor:', err));
 
-    // Load categories
-    fetch('http://localhost:5000/categories')
-      .then((res) => res.json())
-      .then((data) => setAvailableCategories(data))
-      .catch((err) => console.error('Eroare la încărcarea categoriilor:', err));
-  }, []);
+      // Load categories
+      fetch('http://localhost:5000/categories')
+        .then((res) => res.json())
+        .then((data) => setAvailableCategories(data))
+        .catch((err) => console.error('Eroare la încărcarea categoriilor:', err));
+    }
+  }, [currentUser]);
 
   const handleCategoryChange = (category) => {
     setSelectedCategories(prev => {
@@ -54,13 +61,25 @@ function App() {
     });
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('currentUser');
+    setCurrentUser(null);
+    setFoods([]);
+  };
+
+  const handleLogin = (username) => {
+    setCurrentUser(username);
+    setShowRegister(false);
+  };
+
+  // Rest of your existing functions, modified to include user information
   const addFood = () => {
     if (!newFood || !expirationDate || selectedCategories.length === 0) {
       alert('Vă rugăm completați toate câmpurile și selectați cel puțin o categorie!');
       return;
     }
 
-    fetch('http://localhost:5000/foods', {
+    fetch(`http://localhost:5000/foods/${currentUser}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -84,7 +103,7 @@ function App() {
   };
 
   const deleteFood = (index) => {
-    fetch(`http://localhost:5000/foods/${index}`, {
+    fetch(`http://localhost:5000/foods/${currentUser}/${index}`, {
       method: 'DELETE',
     })
       .then((res) => res.json())
@@ -98,7 +117,7 @@ function App() {
       return;
     }
 
-    fetch(`http://localhost:5000/foods/${index}`, {
+    fetch(`http://localhost:5000/foods/${currentUser}/${index}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(editFood),
@@ -137,7 +156,70 @@ function App() {
     </div>
   );
 
+  if (!currentUser) {
+    return (
+      <div>
+        {showRegister ? (
+          <>
+            <Register onRegisterSuccess={() => setShowRegister(false)} />
+            <button 
+              onClick={() => setShowRegister(false)}
+              style={{ 
+                display: 'block', 
+                margin: '0 auto', 
+                padding: '8px 16px',
+                backgroundColor: '#2196F3',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Înapoi la autentificare
+            </button>
+          </>
+        ) : (
+          <>
+            <Login onLogin={handleLogin} />
+            <button 
+              onClick={() => setShowRegister(true)}
+              style={{ 
+                display: 'block', 
+                margin: '0 auto', 
+                padding: '8px 16px',
+                backgroundColor: '#2196F3',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Creează cont nou
+            </button>
+          </>
+        )}
+      </div>
+    );
+  }
+
   return (
+    <div style={{ padding: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h1>Lista de Alimente - {currentUser}</h1>
+        <button 
+          onClick={handleLogout}
+          style={{ 
+            padding: '8px 16px', 
+            backgroundColor: '#f44336', 
+            color: 'white', 
+            border: 'none', 
+            borderRadius: '4px', 
+            cursor: 'pointer' 
+          }}
+        >
+          Deconectare
+        </button>
+      </div>
     <div style={{ padding: '20px' }}>
       <h1>Lista de Alimente</h1>
       
@@ -245,6 +327,7 @@ function App() {
           ))}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }
