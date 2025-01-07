@@ -13,6 +13,14 @@ const foodsFilePath = './foods.txt';
 const usersFilePath = './users.txt';
 const categoriesFilePath = './tipuriMancare.txt'
 const foodsUnavailableFilePath = './foodsUnavailable.txt';
+const expiredProductsFilePath = './produseExpirate.txt';
+
+const isExpired = (expirationDate) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Reset time to start of day
+  const expDate = new Date(expirationDate);
+  return expDate < today;
+};
 
 const isNearExpiration = (expirationDate) => {
   const today = new Date();
@@ -33,6 +41,51 @@ const readFile = (filePath) => {
 
 const writeFile = (filePath, data) => {
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+};
+
+const moveExpiredProducts = (username) => {
+  const foods = readFile(foodsFilePath);
+  const foodsUnavailable = readFile(foodsUnavailableFilePath);
+  const expiredProducts = readFile(expiredProductsFilePath);
+
+  if (!expiredProducts[username]) {
+    expiredProducts[username] = [];
+  }
+
+  // Check foods.txt for expired products
+  if (foods[username]) {
+    const [expired, valid] = foods[username].reduce(([exp, val], food) => {
+      return isExpired(food.expirationDate) 
+        ? [[...exp, food], val]
+        : [exp, [...val, food]];
+    }, [[], []]);
+    
+    foods[username] = valid;
+    expiredProducts[username].push(...expired);
+  }
+
+  // Check foodsUnavailable.txt for expired products
+  if (foodsUnavailable[username]) {
+    const [expired, valid] = foodsUnavailable[username].reduce(([exp, val], food) => {
+      return isExpired(food.expirationDate)
+        ? [[...exp, food], val]
+        : [exp, [...val, food]];
+    }, [[], []]);
+    
+    foodsUnavailable[username] = valid;
+    expiredProducts[username].push(...expired);
+  }
+
+  // Save all changes
+  writeFile(foodsFilePath, foods);
+  writeFile(foodsUnavailableFilePath, foodsUnavailable);
+  writeFile(expiredProductsFilePath, expiredProducts);
+
+  return {
+    available: foods[username] || [],
+    unavailable: foodsUnavailable[username] || [],
+    expired: expiredProducts[username] || []
+  };
 };
 
 app.post('/register', (req, res) => {
@@ -58,7 +111,6 @@ app.post('/register', (req, res) => {
 
   res.status(201).json({ message: 'Cont creat cu succes!' });
 });
-
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
   
@@ -72,7 +124,30 @@ app.post('/login', (req, res) => {
     return res.status(401).json({ message: 'Credențiale invalide!' });
   }
 
-  res.json({ message: 'Autentificare reușită!' });
+  // Move expired products upon login
+  const products = moveExpiredProducts(username);
+
+  res.json({ 
+    message: 'Autentificare reușită!',
+    products
+  });
+});
+
+app.get('/foods-expired/:username', (req, res) => {
+  const { username } = req.params;
+  const expiredProducts = readFile(expiredProductsFilePath);
+  res.json(expiredProducts[username] || []);
+});
+
+// Add endpoint to delete all expired products for a user
+app.delete('/foods-expired/:username', (req, res) => {
+  const { username } = req.params;
+  const expiredProducts = readFile(expiredProductsFilePath);
+  
+  expiredProducts[username] = [];
+  writeFile(expiredProductsFilePath, expiredProducts);
+  
+  res.json({ message: 'Produse expirate șterse cu succes!' });
 });
 
 app.get('/categories', (req, res) => {

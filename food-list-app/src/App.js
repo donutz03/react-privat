@@ -7,6 +7,7 @@ import NotificationBell from './NotificationBell';
 function App() {
   const [foods, setFoods] = useState([]);
   const [unavailableFoods, setUnavailableFoods] = useState([]);
+  const [expiredFoods, setExpiredFoods] = useState([]);
   const [newFood, setNewFood] = useState('');
   const [expirationDate, setExpirationDate] = useState('');
   const [selectedCategories, setSelectedCategories] = useState([]);
@@ -23,36 +24,47 @@ function App() {
   // New state for authentication
   const [currentUser, setCurrentUser] = useState(localStorage.getItem('currentUser'));
   const [showRegister, setShowRegister] = useState(false);
-
   useEffect(() => {
     if (currentUser) {
-      // Load available foods
-      fetch(`http://localhost:5000/foods/${currentUser}`)
-        .then((res) => res.json())
-        .then((data) => {
-          const sanitizedData = data.map(food => ({
-            ...food,
-            categories: Array.isArray(food.categories) ? food.categories : []
-          }));
-          setFoods(sanitizedData);
-        })
-        .catch((err) => console.error('Eroare la încărcarea alimentelor:', err));
-
-      // Load unavailable foods
-      fetch(`http://localhost:5000/foods-unavailable/${currentUser}`)
-        .then((res) => res.json())
-        .then((data) => {
-          setUnavailableFoods(data);
-        })
-        .catch((err) => console.error('Eroare la încărcarea alimentelor indisponibile:', err));
-
-      // Load categories
-      fetch('http://localhost:5000/categories')
-        .then((res) => res.json())
-        .then((data) => setAvailableCategories(data))
-        .catch((err) => console.error('Eroare la încărcarea categoriilor:', err));
+      // Load all types of foods after login
+      loadAllFoods();
     }
   }, [currentUser]);
+
+  const loadAllFoods = () => {
+    // Load available foods
+    fetch(`http://localhost:5000/foods/${currentUser}`)
+      .then((res) => res.json())
+      .then((data) => {
+        const sanitizedData = data.map(food => ({
+          ...food,
+          categories: Array.isArray(food.categories) ? food.categories : []
+        }));
+        setFoods(sanitizedData);
+      })
+      .catch((err) => console.error('Eroare la încărcarea alimentelor:', err));
+
+    // Load unavailable foods
+    fetch(`http://localhost:5000/foods-unavailable/${currentUser}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setUnavailableFoods(data);
+      })
+      .catch((err) => console.error('Eroare la încărcarea alimentelor indisponibile:', err));
+
+    // Load expired foods
+    fetch(`http://localhost:5000/foods-expired/${currentUser}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setExpiredFoods(data);
+      })
+      .catch((err) => console.error('Eroare la încărcarea alimentelor expirate:', err));
+
+      fetch('http://localhost:5000/categories')
+      .then((res) => res.json())
+      .then((data) => setAvailableCategories(data))
+      .catch((err) => console.error('Eroare la încărcarea categoriilor:', err));
+  };
 
   const preventDateTyping = (e) => {
     // Prevent any key input except Tab and Enter for navigation
@@ -104,7 +116,20 @@ function App() {
   const handleLogin = (username) => {
     setCurrentUser(username);
     setShowRegister(false);
+    loadAllFoods();
   };
+
+  const handleDeleteExpiredProducts = () => {
+    fetch(`http://localhost:5000/foods-expired/${currentUser}`, {
+      method: 'DELETE',
+    })
+      .then((res) => res.json())
+      .then(() => {
+        setExpiredFoods([]); // Clear expired foods from state
+      })
+      .catch((err) => console.error('Eroare la ștergerea produselor expirate:', err));
+  };
+
 
   // Rest of your existing functions, modified to include user information
   const addFood = () => {
@@ -174,6 +199,47 @@ function App() {
       categories: food.categories
     });
   };
+
+  const ExpiredProductsTable = ({ foods }) => (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        <h2>Produse Expirate</h2>
+        {foods.length > 0 && (
+          <button
+            onClick={handleDeleteExpiredProducts}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: '#f44336',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            Ștergere produse expirate
+          </button>
+        )}
+      </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
+        <thead>
+          <tr>
+            <th style={{ border: '1px solid #ddd', padding: '8px' }}>Aliment</th>
+            <th style={{ border: '1px solid #ddd', padding: '8px' }}>Data Expirare</th>
+            <th style={{ border: '1px solid #ddd', padding: '8px' }}>Categorii</th>
+          </tr>
+        </thead>
+        <tbody>
+          {foods.map((food, index) => (
+            <tr key={index}>
+              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{food.name}</td>
+              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{food.expirationDate}</td>
+              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{food.categories.join(', ')}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 
   const CategoryCheckboxes = ({ selectedCategories, onChange }) => (
     <div className="categories-container" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', margin: '10px 0' }}>
@@ -487,7 +553,7 @@ function App() {
   </div>
 </div>
 
-      <div>
+<div>
         <h2>Produse Disponibile</h2>
         <FoodTable foods={foods} isAvailableTable={true} />
       </div>
@@ -495,6 +561,10 @@ function App() {
       <div style={{ marginTop: '40px' }}>
         <h2>Produse Marcate ca Disponibile</h2>
         <FoodTable foods={unavailableFoods} isAvailableTable={false} />
+      </div>
+
+      <div style={{ marginTop: '40px' }}>
+        <ExpiredProductsTable foods={expiredFoods} />
       </div>
     </div>
   );

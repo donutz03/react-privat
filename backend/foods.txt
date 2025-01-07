@@ -1,11 +1,19 @@
 {
   "util1": [
     {
-      "name": "aaaaa",
-      "expirationDate": "2025-01-22",
+      "name": "ab",
+      "expirationDate": "2025-01-15",
       "categories": [
-        "Fructe",
-        "Conserve"
+        "Legume",
+        "Dulciuri"
+      ]
+    },
+    {
+      "name": "dadad",
+      "expirationDate": "2025-01-09",
+      "categories": [
+        "Carne",
+        "Băuturi"
       ]
     }
   ],
