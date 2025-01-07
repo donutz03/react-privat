@@ -12,7 +12,8 @@ function App() {
   const [expirationDate, setExpirationDate] = useState('');
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [availableCategories, setAvailableCategories] = useState([]);
-  const [editingIndex, setEditingIndex] = useState(null);
+  const [unavailableEditingIndex, setUnavailableEditingIndex] = useState(null);
+  const[availableEditingIndex, setAvailableEditingIndex]=useState(null);
   const [editFood, setEditFood] = useState({ 
     name: '', 
     expirationDate: '', 
@@ -184,7 +185,7 @@ function App() {
       .then((res) => res.json())
       .then((data) => {
         setFoods(data);
-        setEditingIndex(null);
+        setUnavailableEditingIndex(null);
         setEditFood({ name: '', expirationDate: '', categories: [] });
       })
       .catch((err) => console.error('Eroare la editare:', err));
@@ -213,14 +214,14 @@ function App() {
       .then((res) => res.json())
       .then((data) => {
         setUnavailableFoods(data);
-        setEditingIndex(null);
+        setUnavailableEditingIndex(null);
         setEditFood({ name: '', expirationDate: '', categories: [] });
       })
       .catch((err) => console.error('Eroare la editare:', err));
   };
 
   const handleEditClick = (index) => {
-    setEditingIndex(index);
+    setUnavailableEditingIndex(index);
     const food = foods[index];
     setEditFood({
       name: food.name,
@@ -387,7 +388,7 @@ function App() {
                   </button>
                   <button 
                     onClick={() => {
-                      setEditingIndex(null);
+                      setUnavailableEditingIndex(null);
                       setEditFood({ name: '', expirationDate: '', categories: [] });
                     }}
                     style={{ padding: '4px 8px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
@@ -529,17 +530,17 @@ function App() {
       </div>
 
       <div>
-  <h2>Produse Disponibile</h2>
+  <h2>Produsele mele</h2>
   <FoodTable 
     foods={foods} 
     isAvailableTable={true}
     onDelete={deleteFood}
-    editingIndex={editingIndex}
+    editingIndex={unavailableEditingIndex}
     editFood={editFood}
     setEditFood={setEditFood}
     onEditSave={editFoodItem}
     onEditClick={(index, food) => {
-      setEditingIndex(index);
+      setUnavailableEditingIndex(index);
       setEditFood({
         name: food.name,
         expirationDate: food.expirationDate,
@@ -556,12 +557,12 @@ function App() {
     foods={unavailableFoods} 
     isAvailableTable={false}
     onDelete={deleteUnavailableFood}
-    editingIndex={editingIndex}
+    editingIndex={availableEditingIndex}
     editFood={editFood}
     setEditFood={setEditFood}
     onEditSave={editUnavailableFoodItem}
     onEditClick={(index, food) => {
-      setEditingIndex(index);
+      setAvailableEditingIndex(index);
       setEditFood({
         name: food.name,
         expirationDate: food.expirationDate,
