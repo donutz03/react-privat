@@ -571,6 +571,10 @@ function App() {
     handleEditCategoryChange={handleEditCategoryChange}
   />
 </div>
+
+<div style={{ marginTop: '40px' }}>
+        <ExpiredProductsTable foods={expiredFoods} />
+      </div>
     </div>
   );
 }
