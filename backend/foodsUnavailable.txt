@@ -1,14 +1,6 @@
 {
   "util1": [
     {
-      "name": "dadad",
-      "expirationDate": "2025-01-09",
-      "categories": [
-        "Carne",
-        "Băuturi"
-      ]
-    },
-    {
       "name": "dddd",
       "expirationDate": "2025-01-08",
       "categories": [
@@ -19,6 +11,14 @@
       "name": "rrrrr",
       "expirationDate": "2025-01-08",
       "categories": [
+        "Băuturi"
+      ]
+    },
+    {
+      "name": "dadad",
+      "expirationDate": "2025-01-09",
+      "categories": [
+        "Carne",
         "Băuturi"
       ]
     }

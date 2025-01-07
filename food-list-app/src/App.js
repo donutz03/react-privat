@@ -54,6 +54,13 @@ function App() {
     }
   }, [currentUser]);
 
+  const preventDateTyping = (e) => {
+    // Prevent any key input except Tab and Enter for navigation
+    if (e.key !== 'Tab' && e.key !== 'Enter') {
+      e.preventDefault();
+    }
+  };
+
   const handleMarkAvailability = (index, makeAvailable = true) => {
     fetch(`http://localhost:5000/foods/${currentUser}/toggle-availability/${index}`, {
       method: 'POST',
@@ -230,8 +237,14 @@ function App() {
   }
 
   const FoodTable = ({ foods, isAvailableTable = true }) => {
-    // Get today's date in YYYY-MM-DD format for comparison
     const today = new Date().toISOString().split('T')[0];
+    
+    // Prevent typing in date input
+    const preventDateTyping = (e) => {
+      if (e.key !== 'Tab' && e.key !== 'Enter') {
+        e.preventDefault();
+      }
+    };
     
     return (
       <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
@@ -257,13 +270,30 @@ function App() {
                     />
                   </td>
                   <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                    <input
-                      type="date"
-                      value={editFood.expirationDate}
-                      min={today}
-                      onChange={(e) => setEditFood({ ...editFood, expirationDate: e.target.value })}
-                      style={{ width: '100%', padding: '4px' }}
-                    />
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="date"
+                        value={editFood.expirationDate}
+                        min={today}
+                        onChange={(e) => setEditFood({ ...editFood, expirationDate: e.target.value })}
+                        onKeyDown={preventDateTyping}
+                        style={{ 
+                          width: '100%', 
+                          padding: '4px',
+                          cursor: 'pointer'
+                        }}
+                      />
+                      <span style={{ 
+                        position: 'absolute', 
+                        right: '10px', 
+                        top: '50%', 
+                        transform: 'translateY(-50%)',
+                        pointerEvents: 'none',
+                        color: '#666'
+                      }}>
+                        📅
+                      </span>
+                    </div>
                   </td>
                   <td style={{ border: '1px solid #ddd', padding: '8px' }}>
                     <CategoryCheckboxes
@@ -415,13 +445,32 @@ function App() {
       onChange={(e) => setNewFood(e.target.value)}
       style={{ padding: '8px' }}
     />
-    <input
-      type="date"
-      value={expirationDate}
-      min={today}
-      onChange={(e) => setExpirationDate(e.target.value)}
-      style={{ padding: '8px' }}
-    />
+    <div style={{ position: 'relative' }}>
+      <input
+        type="date"
+        value={expirationDate}
+        min={today}
+        onChange={(e) => setExpirationDate(e.target.value)}
+        onKeyDown={preventDateTyping}
+        style={{ 
+          padding: '8px',
+          width: '100%',
+          cursor: 'pointer',
+          backgroundColor: '#ffffff'
+        }}
+      />
+      {/* Add a small calendar icon to make it clear this is calendar-only */}
+      <span style={{ 
+        position: 'absolute', 
+        right: '10px', 
+        top: '50%', 
+        transform: 'translateY(-50%)',
+        pointerEvents: 'none',
+        color: '#666'
+      }}>
+        📅
+      </span>
+    </div>
     <div>
       <p>Selectați categoriile:</p>
       <CategoryCheckboxes
