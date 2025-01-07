@@ -188,6 +188,51 @@ app.get('/foods-unavailable/:username', (req, res) => {
   res.json(foodsUnavailable[username]);
 });
 
+// Adăugăm noi endpoint-uri pentru produsele indisponibile
+app.delete('/foods-unavailable/:username/:index', (req, res) => {
+  const { username, index } = req.params;
+  const foodsUnavailable = readFile(foodsUnavailableFilePath);
+  
+  if (!foodsUnavailable[username]) {
+    return res.status(404).json({ message: 'Utilizatorul nu a fost găsit.' });
+  }
+  
+  const idx = parseInt(index);
+  if (idx < 0 || idx >= foodsUnavailable[username].length) {
+    return res.status(404).json({ message: 'Index invalid.' });
+  }
+  
+  foodsUnavailable[username].splice(idx, 1);
+  writeFile(foodsUnavailableFilePath, foodsUnavailable);
+  
+  res.json(foodsUnavailable[username]);
+});
+
+app.put('/foods-unavailable/:username/:index', (req, res) => {
+  const { username, index } = req.params;
+  const { name, expirationDate, categories } = req.body;
+
+  if (!name || !expirationDate || !categories || categories.length === 0) {
+    return res.status(400).json({ message: 'Toate câmpurile sunt necesare și trebuie selectată cel puțin o categorie.' });
+  }
+
+  const foodsUnavailable = readFile(foodsUnavailableFilePath);
+  
+  if (!foodsUnavailable[username]) {
+    return res.status(404).json({ message: 'Utilizatorul nu a fost găsit.' });
+  }
+  
+  const idx = parseInt(index);
+  if (idx < 0 || idx >= foodsUnavailable[username].length) {
+    return res.status(404).json({ message: 'Index invalid.' });
+  }
+  
+  foodsUnavailable[username][idx] = { name, expirationDate, categories };
+  writeFile(foodsUnavailableFilePath, foodsUnavailable);
+  
+  res.json(foodsUnavailable[username]);
+});
+
 app.post('/foods/:username', (req, res) => {
   const { username } = req.params;
   const { name, expirationDate, categories } = req.body;
