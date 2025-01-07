@@ -1,0 +1,13 @@
+{
+  "util1": [
+    {
+      "name": "dadad",
+      "expirationDate": "2025-01-09",
+      "categories": [
+        "Carne",
+        "Băuturi"
+      ]
+    }
+  ],
+  "util2": []
+}

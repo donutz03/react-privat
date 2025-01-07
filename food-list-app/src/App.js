@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import Login from './Login';
 import Register from './Register';
+import NotificationBell from './NotificationBell';
+
 
 function App() {
   const [foods, setFoods] = useState([]);
+  const [unavailableFoods, setUnavailableFoods] = useState([]);
   const [newFood, setNewFood] = useState('');
   const [expirationDate, setExpirationDate] = useState('');
   const [selectedCategories, setSelectedCategories] = useState([]);
@@ -21,7 +24,7 @@ function App() {
 
   useEffect(() => {
     if (currentUser) {
-      // Load foods for current user
+      // Load available foods
       fetch(`http://localhost:5000/foods/${currentUser}`)
         .then((res) => res.json())
         .then((data) => {
@@ -33,6 +36,14 @@ function App() {
         })
         .catch((err) => console.error('Eroare la încărcarea alimentelor:', err));
 
+      // Load unavailable foods
+      fetch(`http://localhost:5000/foods-unavailable/${currentUser}`)
+        .then((res) => res.json())
+        .then((data) => {
+          setUnavailableFoods(data);
+        })
+        .catch((err) => console.error('Eroare la încărcarea alimentelor indisponibile:', err));
+
       // Load categories
       fetch('http://localhost:5000/categories')
         .then((res) => res.json())
@@ -40,6 +51,20 @@ function App() {
         .catch((err) => console.error('Eroare la încărcarea categoriilor:', err));
     }
   }, [currentUser]);
+
+  const handleMarkAvailability = (index, makeAvailable = true) => {
+    fetch(`http://localhost:5000/foods/${currentUser}/toggle-availability/${index}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ makeAvailable })
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setFoods(data.available);
+        setUnavailableFoods(data.unavailable);
+      })
+      .catch((err) => console.error('Eroare la modificarea disponibilității:', err));
+  };
 
   const handleCategoryChange = (category) => {
     setSelectedCategories(prev => {
@@ -202,27 +227,130 @@ function App() {
     );
   }
 
+  const FoodTable = ({ foods, isAvailableTable = true }) => (
+    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
+      <thead>
+        <tr>
+          <th style={{ border: '1px solid #ddd', padding: '8px' }}>Aliment</th>
+          <th style={{ border: '1px solid #ddd', padding: '8px' }}>Data Expirare</th>
+          <th style={{ border: '1px solid #ddd', padding: '8px' }}>Categorii</th>
+          <th style={{ border: '1px solid #ddd', padding: '8px' }}>Acțiuni</th>
+        </tr>
+      </thead>
+      <tbody>
+        {foods.map((food, index) => (
+          <tr key={index}>
+            <td style={{ border: '1px solid #ddd', padding: '8px' }}>{food.name}</td>
+            <td style={{ border: '1px solid #ddd', padding: '8px' }}>{food.expirationDate}</td>
+            <td style={{ border: '1px solid #ddd', padding: '8px' }}>{food.categories.join(', ')}</td>
+            <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+              <button 
+                onClick={() => handleEditClick(index)}
+                style={{ marginRight: '5px', padding: '4px 8px', backgroundColor: '#2196F3', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+              >
+                Editează
+              </button>
+              <button 
+                onClick={() => deleteFood(index)}
+                style={{ marginRight: '5px', padding: '4px 8px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+              >
+                Șterge
+              </button>
+              {isAvailableTable ? (
+                food.isNearExpiration && (
+                  <button 
+                    onClick={() => handleMarkAvailability(index, true)}
+                    style={{ padding: '4px 8px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    Marchează disponibil
+                  </button>
+                )
+              ) : (
+                <button 
+                  onClick={() => handleMarkAvailability(index, false)}
+                  style={{ padding: '4px 8px', backgroundColor: '#FF9800', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                >
+                  Marchează indisponibil
+                </button>
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+
+  if (!currentUser) {
+    return (
+      <div>
+        {showRegister ? (
+          <>
+            <Register onRegisterSuccess={() => setShowRegister(false)} />
+            <button 
+              onClick={() => setShowRegister(false)}
+              style={{ 
+                display: 'block', 
+                margin: '0 auto', 
+                padding: '8px 16px',
+                backgroundColor: '#2196F3',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Înapoi la autentificare
+            </button>
+          </>
+        ) : (
+          <>
+            <Login onLogin={handleLogin} />
+            <button 
+              onClick={() => setShowRegister(true)}
+              style={{ 
+                display: 'block', 
+                margin: '0 auto', 
+                padding: '8px 16px',
+                backgroundColor: '#2196F3',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Creează cont nou
+            </button>
+          </>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h1>Lista de Alimente - {currentUser}</h1>
-        <button 
-          onClick={handleLogout}
-          style={{ 
-            padding: '8px 16px', 
-            backgroundColor: '#f44336', 
-            color: 'white', 
-            border: 'none', 
-            borderRadius: '4px', 
-            cursor: 'pointer' 
-          }}
-        >
-          Deconectare
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <NotificationBell 
+            foods={foods}
+            onMarkAvailable={(index) => handleMarkAvailability(index, true)}
+          />
+          <button 
+            onClick={handleLogout}
+            style={{ 
+              padding: '8px 16px', 
+              backgroundColor: '#f44336', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '4px', 
+              cursor: 'pointer' 
+            }}
+          >
+            Deconectare
+          </button>
+        </div>
       </div>
-    <div style={{ padding: '20px' }}>
-      <h1>Lista de Alimente</h1>
-      
+
       <div style={{ marginBottom: '20px' }}>
         <h2>Adaugă Aliment</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '500px' }}>
@@ -231,11 +359,13 @@ function App() {
             placeholder="Nume Aliment"
             value={newFood}
             onChange={(e) => setNewFood(e.target.value)}
+            style={{ padding: '8px' }}
           />
           <input
             type="date"
             value={expirationDate}
             onChange={(e) => setExpirationDate(e.target.value)}
+            style={{ padding: '8px' }}
           />
           <div>
             <p>Selectați categoriile:</p>
@@ -253,81 +383,15 @@ function App() {
         </div>
       </div>
 
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>
-            <th style={{ border: '1px solid #ddd', padding: '8px' }}>Aliment</th>
-            <th style={{ border: '1px solid #ddd', padding: '8px' }}>Data Expirare</th>
-            <th style={{ border: '1px solid #ddd', padding: '8px' }}>Categorii</th>
-            <th style={{ border: '1px solid #ddd', padding: '8px' }}>Acțiuni</th>
-          </tr>
-        </thead>
-        <tbody>
-          {foods.map((food, index) => (
-            <tr key={index}>
-              {editingIndex === index ? (
-                <>
-                  <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                    <input
-                      type="text"
-                      value={editFood.name}
-                      onChange={(e) => setEditFood({ ...editFood, name: e.target.value })}
-                    />
-                  </td>
-                  <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                    <input
-                      type="date"
-                      value={editFood.expirationDate}
-                      onChange={(e) => setEditFood({ ...editFood, expirationDate: e.target.value })}
-                    />
-                  </td>
-                  <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                    <CategoryCheckboxes
-                      selectedCategories={editFood.categories}
-                      onChange={handleEditCategoryChange}
-                    />
-                  </td>
-                  <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                    <button 
-                      onClick={() => editFoodItem(index)}
-                      style={{ marginRight: '5px', padding: '4px 8px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                    >
-                      Salvează
-                    </button>
-                    <button 
-                      onClick={() => setEditingIndex(null)}
-                      style={{ padding: '4px 8px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                    >
-                      Anulează
-                    </button>
-                  </td>
-                </>
-              ) : (
-                <>
-                  <td style={{ border: '1px solid #ddd', padding: '8px' }}>{food.name}</td>
-                  <td style={{ border: '1px solid #ddd', padding: '8px' }}>{food.expirationDate}</td>
-                  <td style={{ border: '1px solid #ddd', padding: '8px' }}>{food.categories.join(', ')}</td>
-                  <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                    <button 
-                      onClick={() => handleEditClick(index)}
-                      style={{ marginRight: '5px', padding: '4px 8px', backgroundColor: '#2196F3', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                    >
-                      Editează
-                    </button>
-                    <button 
-                      onClick={() => deleteFood(index)}
-                      style={{ padding: '4px 8px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                    >
-                      Șterge
-                    </button>
-                  </td>
-                </>
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+      <div>
+        <h2>Produse Disponibile</h2>
+        <FoodTable foods={foods} isAvailableTable={true} />
+      </div>
+
+      <div style={{ marginTop: '40px' }}>
+        <h2>Produse Marcate ca Disponibile</h2>
+        <FoodTable foods={unavailableFoods} isAvailableTable={false} />
+      </div>
     </div>
   );
 }

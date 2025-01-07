@@ -12,6 +12,15 @@ app.use(bodyParser.json());
 const foodsFilePath = './foods.txt';
 const usersFilePath = './users.txt';
 const categoriesFilePath = './tipuriMancare.txt'
+const foodsUnavailableFilePath = './foodsUnavailable.txt';
+
+const isNearExpiration = (expirationDate) => {
+  const today = new Date();
+  const expDate = new Date(expirationDate);
+  const diffTime = expDate.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays <= 3 && diffDays >= 0;
+};
 
 const readFile = (filePath) => {
   try {
@@ -73,24 +82,45 @@ app.get('/categories', (req, res) => {
     res.json(categories);
   });
 });
+// Modified /foods/:username GET route to include expiration status
 app.get('/foods/:username', (req, res) => {
   const { username } = req.params;
   const foods = readFile(foodsFilePath);
   
-  // If user exists but has no foods yet, initialize empty array
   if (!foods[username]) {
     foods[username] = [];
     writeFile(foodsFilePath, foods);
   }
   
-  res.json(foods[username] || []);
+  // Add isNearExpiration flag to each food item
+  const foodsWithStatus = foods[username].map(food => ({
+    ...food,
+    isNearExpiration: isNearExpiration(food.expirationDate)
+  }));
+  
+  res.json(foodsWithStatus);
 });
+
+app.get('/foods-unavailable/:username', (req, res) => {
+  const { username } = req.params;
+  const foodsUnavailable = readFile(foodsUnavailableFilePath);
+  
+  if (!foodsUnavailable[username]) {
+    foodsUnavailable[username] = [];
+    writeFile(foodsUnavailableFilePath, foodsUnavailable);
+  }
+  
+  res.json(foodsUnavailable[username]);
+});
+
 app.post('/foods/:username', (req, res) => {
   const { username } = req.params;
   const { name, expirationDate, categories } = req.body;
 
   if (!name || !expirationDate || !categories || categories.length === 0) {
-    return res.status(400).json({ message: 'Toate câmpurile sunt necesare și trebuie selectată cel puțin o categorie.' });
+    return res.status(400).json({ 
+      message: 'Toate câmpurile sunt necesare și trebuie selectată cel puțin o categorie.' 
+    });
   }
 
   const foods = readFile(foodsFilePath);
@@ -104,7 +134,56 @@ app.post('/foods/:username', (req, res) => {
   foods[username].push({ name, expirationDate, categories });
   writeFile(foodsFilePath, foods);
   
-  res.status(201).json(foods[username]);
+  // Return the updated list with expiration status
+  const updatedFoods = foods[username].map(food => ({
+    ...food,
+    isNearExpiration: isNearExpiration(food.expirationDate)
+  }));
+  
+  res.status(201).json(updatedFoods);
+});
+
+app.post('/foods/:username/toggle-availability/:index', (req, res) => {
+  const { username, index } = req.params;
+  const { makeAvailable } = req.body; // true to mark as available, false to mark as unavailable
+  
+  const foods = readFile(foodsFilePath);
+  const foodsUnavailable = readFile(foodsUnavailableFilePath);
+  
+  if (!foods[username]) foods[username] = [];
+  if (!foodsUnavailable[username]) foodsUnavailable[username] = [];
+  
+  const idx = parseInt(index);
+  let result = {};
+  
+  if (makeAvailable) {
+    // Move from foods to foodsUnavailable
+    if (idx >= 0 && idx < foods[username].length) {
+      const foodToMove = foods[username][idx];
+      foods[username].splice(idx, 1);
+      foodsUnavailable[username].push(foodToMove);
+    }
+  } else {
+    // Move from foodsUnavailable back to foods
+    if (idx >= 0 && idx < foodsUnavailable[username].length) {
+      const foodToMove = foodsUnavailable[username][idx];
+      foodsUnavailable[username].splice(idx, 1);
+      foods[username].push(foodToMove);
+    }
+  }
+  
+  writeFile(foodsFilePath, foods);
+  writeFile(foodsUnavailableFilePath, foodsUnavailable);
+  
+  result = {
+    available: foods[username].map(food => ({
+      ...food,
+      isNearExpiration: isNearExpiration(food.expirationDate)
+    })),
+    unavailable: foodsUnavailable[username]
+  };
+  
+  res.json(result);
 });
 
 
