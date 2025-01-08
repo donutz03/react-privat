@@ -13,7 +13,8 @@ const FoodTable = ({
   onEditSave,
   onEditClick,
   handleEditCategoryChange,
-  availableCategories
+  availableCategories,
+  handleMarkAvailability
 }) => {
   const today = new Date().toISOString().split('T')[0];
 
@@ -98,6 +99,21 @@ const FoodTable = ({
                   >
                     Șterge
                   </button>
+                  {isAvailableTable ? (
+                    <button 
+                      onClick={() => handleMarkAvailability(index, true)}
+                      style={{ padding: '4px 8px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                    >
+                      Marchează disponibil
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => handleMarkAvailability(index, false)}
+                      style={{ padding: '4px 8px', backgroundColor: '#FF9800', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                    >
+                      Marchează indisponibil
+                    </button>
+                     )}
                 </td>
               </>
             )}
