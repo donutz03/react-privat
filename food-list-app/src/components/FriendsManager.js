@@ -1,9 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Switch } from '@/components/ui/switch';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { X } from 'lucide-react';
+import * as Switch from '@radix-ui/react-switch';
 
 const FriendsManager = ({ currentUser }) => {
   const [friends, setFriends] = useState([]);
@@ -13,7 +9,6 @@ const FriendsManager = ({ currentUser }) => {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // Încarcă datele inițiale despre prieteni
   useEffect(() => {
     fetchFriendsData();
   }, [currentUser]);
@@ -88,62 +83,148 @@ const FriendsManager = ({ currentUser }) => {
   };
 
   if (loading) {
-    return <div className="text-center p-4">Se încarcă...</div>;
+    return <div style={{ textAlign: 'center', padding: '1rem' }}>Se încarcă...</div>;
   }
 
   return (
-    <div className="p-4 max-w-2xl mx-auto">
-      <h2 className="text-2xl font-bold mb-6">Gestionare Prieteni</h2>
+    <div style={{ 
+      padding: '20px',
+      maxWidth: '800px',
+      margin: '0 auto',
+      fontFamily: 'system-ui, -apple-system, sans-serif'
+    }}>
+      <h2 style={{ 
+        fontSize: '24px',
+        fontWeight: 'bold',
+        marginBottom: '20px'
+      }}>
+        Gestionare Prieteni
+      </h2>
       
-      {/* Adăugare prieten nou */}
-      <div className="flex gap-2 mb-6">
-        <Input
+      <div style={{ 
+        display: 'flex',
+        gap: '10px',
+        marginBottom: '20px'
+      }}>
+        <input
           type="text"
           value={newFriend}
           onChange={(e) => setNewFriend(e.target.value)}
           placeholder="Nume utilizator"
-          className="flex-1"
+          style={{
+            padding: '8px 12px',
+            border: '1px solid #ddd',
+            borderRadius: '4px',
+            flex: 1
+          }}
         />
-        <Button onClick={addFriend}>
+        <button
+          onClick={addFriend}
+          style={{
+            padding: '8px 16px',
+            backgroundColor: '#2196F3',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
           Adaugă Prieten
-        </Button>
+        </button>
       </div>
 
-      {/* Mesaje de eroare și succes */}
       {error && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-      
-      {success && (
-        <Alert className="mb-4">
-          <AlertDescription>{success}</AlertDescription>
-        </Alert>
+        <div style={{
+          padding: '12px',
+          backgroundColor: '#ffebee',
+          color: '#c62828',
+          borderRadius: '4px',
+          marginBottom: '16px'
+        }}>
+          {error}
+        </div>
       )}
 
-      {/* Lista de prieteni */}
-      <div className="space-y-4">
-        <h3 className="text-xl font-semibold mb-2">Prietenii mei</h3>
+      {success && (
+        <div style={{
+          padding: '12px',
+          backgroundColor: '#e8f5e9',
+          color: '#2e7d32',
+          borderRadius: '4px',
+          marginBottom: '16px'
+        }}>
+          {success}
+        </div>
+      )}
+
+      <div style={{ marginTop: '20px' }}>
+        <h3 style={{ 
+          fontSize: '18px',
+          fontWeight: 'bold',
+          marginBottom: '16px'
+        }}>
+          Lista Prietenilor
+        </h3>
         {friends.length === 0 ? (
-          <p className="text-gray-500">Nu ai niciun prieten adăugat</p>
+          <p style={{ color: '#666' }}>Nu ai niciun prieten adăugat</p>
         ) : (
-          friends.map((friend) => (
-            <div key={friend} className="flex items-center justify-between p-3 bg-white rounded-lg shadow">
-              <span className="font-medium">{friend}</span>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <Switch
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {friends.map((friend) => (
+              <div
+                key={friend}
+                style={{
+                  padding: '16px',
+                  backgroundColor: '#fff',
+                  borderRadius: '8px',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}
+              >
+                <span style={{ fontWeight: '500' }}>{friend}</span>
+                <div style={{ 
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <Switch.Root
                     checked={sharedListAccess.includes(friend)}
                     onCheckedChange={() => toggleAccess(friend)}
-                  />
-                  <span className="text-sm text-gray-600">
+                    style={{
+                      width: '42px',
+                      height: '25px',
+                      backgroundColor: sharedListAccess.includes(friend) ? '#2196F3' : '#ccc',
+                      borderRadius: '9999px',
+                      position: 'relative',
+                      WebkitTapHighlightColor: 'rgba(0, 0, 0, 0)',
+                      cursor: 'pointer',
+                      border: 'none'
+                    }}
+                  >
+                    <Switch.Thumb
+                      style={{
+                        display: 'block',
+                        width: '21px',
+                        height: '21px',
+                        backgroundColor: 'white',
+                        borderRadius: '9999px',
+                        transition: 'transform 100ms',
+                        transform: sharedListAccess.includes(friend) ? 'translateX(19px)' : 'translateX(2px)',
+                        willChange: 'transform'
+                      }}
+                    />
+                  </Switch.Root>
+                  <span style={{ 
+                    fontSize: '14px',
+                    color: '#666'
+                  }}>
                     {sharedListAccess.includes(friend) ? 'Are acces' : 'Fără acces'}
                   </span>
                 </div>
               </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
     </div>

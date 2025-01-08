@@ -1,0 +1,9 @@
+{
+  "util1": {
+    "friends": [
+      "ad"
+    ],
+    "groups": [],
+    "sharedListAccess": []
+  }
+}
