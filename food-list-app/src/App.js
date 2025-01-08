@@ -6,9 +6,11 @@ import ExpiredProductsTable from './ExpiredProductsTable';
 import FoodTable from './FoodTable';
 import CategoryCheckboxes from './CategoryCheckboxes';
 import FriendsManager from './components/FriendsManager';
-
+import SharedProducts from './components/SharedProducts';
 
 function App() {
+  const [showSharedProducts, setShowSharedProducts] = useState(false);
+  const [currentView, setCurrentView] = useState('products'); // poate fi 'products', 'friends' sau 'shared'
   const [personalFoods, setPersonalFoods] = useState([]);
   const [sharedFoods, setSharedFoods] = useState([]);
   const [expiredFoods, setExpiredFoods] = useState([]);
@@ -322,10 +324,29 @@ function App() {
             onMarkAvailable={(index) => handleMarkAvailability(index, true)}
           />
           <button 
-    onClick={() => setShowFriendsManager(!showFriendsManager)}
+    onClick={() => {
+      setShowFriendsManager(false);
+      setShowSharedProducts(true);
+    }}
     style={{ 
       padding: '8px 16px', 
-      backgroundColor: '#2196F3', 
+      backgroundColor: showSharedProducts ? '#2196F3' : '#90caf9', 
+      color: 'white', 
+      border: 'none', 
+      borderRadius: '4px', 
+      cursor: 'pointer' 
+    }}
+  >
+    Produse de la Prieteni
+  </button>
+  <button 
+    onClick={() => {
+      setShowFriendsManager(!showFriendsManager);
+      setShowSharedProducts(false);
+    }}
+    style={{ 
+      padding: '8px 16px', 
+      backgroundColor: showFriendsManager ? '#2196F3' : '#90caf9', 
       color: 'white', 
       border: 'none', 
       borderRadius: '4px', 
@@ -352,6 +373,8 @@ function App() {
      
       {showFriendsManager ? (
         <FriendsManager currentUser={currentUser} />
+      ) : showSharedProducts ? (
+        <SharedProducts currentUser={currentUser} />
       ) : ( <>
       <div style={{ marginBottom: '20px' }}>
         <h2>Adaugă Aliment</h2>
