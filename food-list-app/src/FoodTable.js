@@ -1,10 +1,13 @@
-// FoodTable.js
+import React from 'react';
+import CategoryCheckboxes from './CategoryCheckboxes';
+
 const FoodTable = ({ 
   foods,
   isAvailableTable,
   onDelete,
   editingIndex,
-  setUnavailableEditingIndex, // vom înlocui acest prop
+  setUnavailableEditingIndex,
+  setAvailableEditingIndex, // Adăugat în props
   editFood,
   setEditFood,
   onEditSave,
@@ -18,7 +21,6 @@ const FoodTable = ({
     if (isAvailableTable) {
       setUnavailableEditingIndex(null);
     } else {
-      // Folosim props-ul corect pentru tabelul de produse partajate
       setAvailableEditingIndex(null);
     }
     setEditFood({ name: '', expirationDate: '', categories: [] });

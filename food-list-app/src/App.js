@@ -372,17 +372,19 @@ function App() {
       <div>
   <h2>Produsele mele</h2>
   <FoodTable 
-  setUnavailableEditingIndex={setUnavailableEditingIndex}
-  availableCategories={availableCategories}
+    availableCategories={availableCategories}
     foods={personalFoods} 
     isAvailableTable={true}
     onDelete={deleteFood}
     editingIndex={unavailableEditingIndex}
+    setUnavailableEditingIndex={setUnavailableEditingIndex}
+    setAvailableEditingIndex={setAvailableEditingIndex} // Adăugăm și celălalt setter
     editFood={editFood}
     setEditFood={setEditFood}
     onEditSave={editFoodItem}
     onEditClick={(index, food) => {
       setUnavailableEditingIndex(index);
+      setAvailableEditingIndex(null); // Resetăm celălalt index
       setEditFood({
         name: food.name,
         expirationDate: food.expirationDate,
@@ -397,16 +399,18 @@ function App() {
   <h2>Produse Marcate ca Disponibile</h2>
   <FoodTable 
     availableCategories={availableCategories}
-    setUnavailableEditingIndex={setUnavailableEditingIndex}
     foods={sharedFoods} 
     isAvailableTable={false}
     onDelete={deleteUnavailableFood}
     editingIndex={availableEditingIndex}
+    setUnavailableEditingIndex={setUnavailableEditingIndex}
+    setAvailableEditingIndex={setAvailableEditingIndex} // Adăugăm ambii setteri
     editFood={editFood}
     setEditFood={setEditFood}
     onEditSave={editUnavailableFoodItem}
     onEditClick={(index, food) => {
       setAvailableEditingIndex(index);
+      setUnavailableEditingIndex(null); // Resetăm celălalt index
       setEditFood({
         name: food.name,
         expirationDate: food.expirationDate,
@@ -416,7 +420,6 @@ function App() {
     handleEditCategoryChange={handleEditCategoryChange}
   />
 </div>
-
 <div style={{ marginTop: '40px' }}>
         <ExpiredProductsTable foods={expiredFoods} currentUser={currentUser} setExpiredFoods={setExpiredFoods}/>
       </div>
