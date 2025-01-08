@@ -393,6 +393,7 @@ function App() {
       });
     }}
     handleEditCategoryChange={handleEditCategoryChange}
+    handleMarkAvailability={handleMarkAvailability}
   />
 </div>
 
@@ -419,6 +420,7 @@ function App() {
       });
     }}
     handleEditCategoryChange={handleEditCategoryChange}
+    handleMarkAvailability={handleMarkAvailability}
   />
 </div>
 <div style={{ marginTop: '40px' }}>
