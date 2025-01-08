@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const SharedProducts = ({ currentUser }) => {
+const SharedProducts = ({ currentUser, setShowSharedProducts }) => {
   const [sharedProducts, setSharedProducts] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -41,7 +41,19 @@ const SharedProducts = ({ currentUser }) => {
   return (
     <div style={{ padding: '20px' }}>
       <h2 style={{ marginBottom: '20px' }}>Produse disponibile de la prieteni</h2>
-      
+      <button
+          onClick={() => setShowSharedProducts(false)}
+          style={{ 
+            padding: '8px 16px', 
+            backgroundColor: '#2196F3', 
+            color: 'white', 
+            border: 'none', 
+            borderRadius: '4px', 
+            cursor: 'pointer'
+          }}
+        >
+          Înapoi la Produse
+        </button>
       {Object.keys(sharedProducts).length === 0 ? (
         <p style={{ color: '#666' }}>
           Nu există produse disponibile de la prieteni momentan.
@@ -90,6 +102,7 @@ const SharedProducts = ({ currentUser }) => {
           </div>
         ))
       )}
+      
     </div>
   );
 };

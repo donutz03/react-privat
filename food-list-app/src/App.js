@@ -374,7 +374,7 @@ function App() {
       {showFriendsManager ? (
         <FriendsManager currentUser={currentUser} />
       ) : showSharedProducts ? (
-        <SharedProducts currentUser={currentUser} />
+        <SharedProducts currentUser={currentUser} setShowSharedProducts={setShowSharedProducts}/>
       ) : ( <>
       <div style={{ marginBottom: '20px' }}>
         <h2>Adaugă Aliment</h2>
