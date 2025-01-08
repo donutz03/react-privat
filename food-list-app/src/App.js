@@ -5,6 +5,7 @@ import NotificationBell from './NotificationBell';
 import ExpiredProductsTable from './ExpiredProductsTable';
 import FoodTable from './FoodTable';
 import CategoryCheckboxes from './CategoryCheckboxes';
+import FriendsManager from './components/FriendsManager';
 
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
     expirationDate: '', 
     categories: [] 
   });
+  const [showFriendsManager, setShowFriendsManager] = useState(false);
   const today = new Date().toISOString().split('T')[0];
 
 
@@ -320,6 +322,19 @@ function App() {
             onMarkAvailable={(index) => handleMarkAvailability(index, true)}
           />
           <button 
+    onClick={() => setShowFriendsManager(!showFriendsManager)}
+    style={{ 
+      padding: '8px 16px', 
+      backgroundColor: '#2196F3', 
+      color: 'white', 
+      border: 'none', 
+      borderRadius: '4px', 
+      cursor: 'pointer' 
+    }}
+  >
+    {showFriendsManager ? 'Înapoi la Produse' : 'Gestionare Prieteni'}
+  </button>
+          <button 
             onClick={handleLogout}
             style={{ 
               padding: '8px 16px', 
@@ -334,7 +349,10 @@ function App() {
           </button>
         </div>
       </div>
-
+     
+      {showFriendsManager ? (
+        <FriendsManager currentUser={currentUser} />
+      ) : ( <>
       <div style={{ marginBottom: '20px' }}>
         <h2>Adaugă Aliment</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '500px' }}>
@@ -397,6 +415,7 @@ function App() {
   />
 </div>
 
+
 <div style={{ marginTop: '40px' }}>
   <h2>Produse Marcate ca Disponibile</h2>
   <FoodTable 
@@ -426,6 +445,8 @@ function App() {
 <div style={{ marginTop: '40px' }}>
         <ExpiredProductsTable foods={expiredFoods} currentUser={currentUser} setExpiredFoods={setExpiredFoods}/>
       </div>
+      </>
+        )}
     </div>
   );
 }
