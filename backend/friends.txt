@@ -7,5 +7,10 @@
     "sharedListAccess": [
       "ad"
     ]
+  },
+  "tags": {
+    "friends": [],
+    "groups": [],
+    "sharedListAccess": []
   }
 }

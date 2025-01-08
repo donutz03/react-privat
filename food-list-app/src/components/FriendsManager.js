@@ -1,28 +1,42 @@
 import React, { useState, useEffect } from 'react';
-import * as Switch from '@radix-ui/react-switch';
+import FriendFilter from './FriendFilter';
 
 const FriendsManager = ({ currentUser }) => {
-  const [friends, setFriends] = useState([]);
+  const [friends, setFriends] = useState({});
   const [sharedListAccess, setSharedListAccess] = useState([]);
   const [newFriend, setNewFriend] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
+  const [availableTags, setAvailableTags] = useState([]);
+  const [filteredFriends, setFilteredFriends] = useState({});
 
   useEffect(() => {
     fetchFriendsData();
+    fetchAvailableTags();
   }, [currentUser]);
 
   const fetchFriendsData = async () => {
     try {
       const response = await fetch(`http://localhost:5000/friends/${currentUser}`);
       const data = await response.json();
-      setFriends(data.friends || []);
+      setFriends(data.friends || {});
+      setFilteredFriends(data.friends || {});
       setSharedListAccess(data.sharedListAccess || []);
       setLoading(false);
     } catch (err) {
       setError('Eroare la încărcarea prietenilor');
       setLoading(false);
+    }
+  };
+
+  const fetchAvailableTags = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/friends/tags');
+      const data = await response.json();
+      setAvailableTags(data);
+    } catch (err) {
+      console.error('Eroare la încărcarea etichetelor disponibile:', err);
     }
   };
 
@@ -46,11 +60,38 @@ const FriendsManager = ({ currentUser }) => {
       }
 
       setFriends(data.friends);
+      setFilteredFriends(data.friends);
       setNewFriend('');
       setSuccess('Prieten adăugat cu succes!');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError(err.message || 'Eroare la adăugarea prietenului');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
+  const toggleTag = async (friendUsername, tag) => {
+    const currentTags = friends[friendUsername] || [];
+    const newTags = currentTags.includes(tag)
+      ? currentTags.filter(t => t !== tag)
+      : [...currentTags, tag];
+
+    try {
+      const response = await fetch(`http://localhost:5000/friends/${currentUser}/friends/${friendUsername}/tags`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tags: newTags })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message);
+      }
+
+      setFriends(data.friends);
+      setFilteredFriends(data.friends);
+    } catch (err) {
+      setError('Eroare la actualizarea etichetelor');
       setTimeout(() => setError(''), 3000);
     }
   };
@@ -68,17 +109,30 @@ const FriendsManager = ({ currentUser }) => {
       });
 
       const data = await response.json();
-
       if (!response.ok) {
         throw new Error(data.message);
       }
 
       setSharedListAccess(data.sharedListAccess);
-      setSuccess('Acces actualizat cu succes!');
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError('Eroare la actualizarea accesului');
       setTimeout(() => setError(''), 3000);
+    }
+  };
+
+  const handleFilterChange = async (selectedTags) => {
+    if (selectedTags.length === 0) {
+      setFilteredFriends(friends);
+      return;
+    }
+
+    try {
+      const queryParams = selectedTags.join(',');
+      const response = await fetch(`http://localhost:5000/friends/${currentUser}/filter?tags=${queryParams}`);
+      const data = await response.json();
+      setFilteredFriends(data.friends);
+    } catch (err) {
+      console.error('Eroare la filtrarea prietenilor:', err);
     }
   };
 
@@ -87,42 +141,27 @@ const FriendsManager = ({ currentUser }) => {
   }
 
   return (
-    <div style={{ 
-      padding: '20px',
-      maxWidth: '800px',
-      margin: '0 auto',
-      fontFamily: 'system-ui, -apple-system, sans-serif'
-    }}>
-      <h2 style={{ 
-        fontSize: '24px',
-        fontWeight: 'bold',
-        marginBottom: '20px'
-      }}>
-        Gestionare Prieteni
-      </h2>
+    <div style={{ padding: '20px' }}>
+      <h2 style={{ marginBottom: '20px' }}>Gestionare Prieteni</h2>
       
-      <div style={{ 
-        display: 'flex',
-        gap: '10px',
-        marginBottom: '20px'
-      }}>
+      <div style={{ marginBottom: '20px' }}>
         <input
           type="text"
           value={newFriend}
           onChange={(e) => setNewFriend(e.target.value)}
           placeholder="Nume utilizator"
           style={{
-            padding: '8px 12px',
-            border: '1px solid #ddd',
+            padding: '8px',
+            marginRight: '10px',
             borderRadius: '4px',
-            flex: 1
+            border: '1px solid #ccc'
           }}
         />
         <button
           onClick={addFriend}
           style={{
             padding: '8px 16px',
-            backgroundColor: '#2196F3',
+            backgroundColor: '#4CAF50',
             color: 'white',
             border: 'none',
             borderRadius: '4px',
@@ -135,11 +174,11 @@ const FriendsManager = ({ currentUser }) => {
 
       {error && (
         <div style={{
-          padding: '12px',
+          padding: '10px',
           backgroundColor: '#ffebee',
           color: '#c62828',
           borderRadius: '4px',
-          marginBottom: '16px'
+          marginBottom: '10px'
         }}>
           {error}
         </div>
@@ -147,85 +186,63 @@ const FriendsManager = ({ currentUser }) => {
 
       {success && (
         <div style={{
-          padding: '12px',
+          padding: '10px',
           backgroundColor: '#e8f5e9',
           color: '#2e7d32',
           borderRadius: '4px',
-          marginBottom: '16px'
+          marginBottom: '10px'
         }}>
           {success}
         </div>
       )}
 
+      <FriendFilter onFilterChange={handleFilterChange} />
+
       <div style={{ marginTop: '20px' }}>
-        <h3 style={{ 
-          fontSize: '18px',
-          fontWeight: 'bold',
-          marginBottom: '16px'
-        }}>
-          Lista Prietenilor
-        </h3>
-        {friends.length === 0 ? (
-          <p style={{ color: '#666' }}>Nu ai niciun prieten adăugat</p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {friends.map((friend) => (
-              <div
-                key={friend}
-                style={{
-                  padding: '16px',
-                  backgroundColor: '#fff',
-                  borderRadius: '8px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}
-              >
-                <span style={{ fontWeight: '500' }}>{friend}</span>
-                <div style={{ 
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <Switch.Root
-                    checked={sharedListAccess.includes(friend)}
-                    onCheckedChange={() => toggleAccess(friend)}
-                    style={{
-                      width: '42px',
-                      height: '25px',
-                      backgroundColor: sharedListAccess.includes(friend) ? '#2196F3' : '#ccc',
-                      borderRadius: '9999px',
-                      position: 'relative',
-                      WebkitTapHighlightColor: 'rgba(0, 0, 0, 0)',
-                      cursor: 'pointer',
-                      border: 'none'
-                    }}
-                  >
-                    <Switch.Thumb
-                      style={{
-                        display: 'block',
-                        width: '21px',
-                        height: '21px',
-                        backgroundColor: 'white',
-                        borderRadius: '9999px',
-                        transition: 'transform 100ms',
-                        transform: sharedListAccess.includes(friend) ? 'translateX(19px)' : 'translateX(2px)',
-                        willChange: 'transform'
-                      }}
-                    />
-                  </Switch.Root>
-                  <span style={{ 
-                    fontSize: '14px',
-                    color: '#666'
-                  }}>
-                    {sharedListAccess.includes(friend) ? 'Are acces' : 'Fără acces'}
-                  </span>
-                </div>
-              </div>
-            ))}
+        {Object.entries(filteredFriends).map(([friendUsername, friendTags]) => (
+          <div
+            key={friendUsername}
+            style={{
+              padding: '15px',
+              marginBottom: '10px',
+              backgroundColor: '#f5f5f5',
+              borderRadius: '4px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <h3>{friendUsername}</h3>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  type="checkbox"
+                  checked={sharedListAccess.includes(friendUsername)}
+                  onChange={() => toggleAccess(friendUsername)}
+                />
+                Acces la lista de produse
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {availableTags.map(tag => (
+                <button
+                  key={tag}
+                  onClick={() => toggleTag(friendUsername, tag)}
+                  style={{
+                    padding: '4px 12px',
+                    border: 'none',
+                    borderRadius: '16px',
+                    backgroundColor: friendTags.includes(tag) ? '#2196F3' : '#e0e0e0',
+                    color: friendTags.includes(tag) ? 'white' : 'black',
+                    cursor: 'pointer',
+                    fontSize: '14px'
+                  }}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
           </div>
-        )}
+        ))}
       </div>
     </div>
   );
