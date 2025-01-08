@@ -185,7 +185,7 @@ function App() {
   };
 
   const deleteUnavailableFood = (index) => {
-    fetch(`http://localhost:5000/foods-unavailable/${currentUser}/${index}`, {
+    fetch(`http://localhost:5000/foods/unavailable/${currentUser}/${index}`, {
       method: 'DELETE',
     })
       .then((res) => res.json())
@@ -193,13 +193,14 @@ function App() {
       .catch((err) => console.error('Eroare la ștergere:', err));
   };
   
+  // Update editUnavailableFoodItem function
   const editUnavailableFoodItem = (index) => {
     if (!editFood.name || !editFood.expirationDate || editFood.categories.length === 0) {
       alert('Vă rugăm completați toate câmpurile și selectați cel puțin o categorie!');
       return;
     }
   
-    fetch(`http://localhost:5000/foods-unavailable/${currentUser}/${index}`, {
+    fetch(`http://localhost:5000/foods/unavailable/${currentUser}/${index}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(editFood),
@@ -211,6 +212,18 @@ function App() {
         setEditFood({ name: '', expirationDate: '', categories: [] });
       })
       .catch((err) => console.error('Eroare la editare:', err));
+  };
+  
+  // Update ExpiredProductsTable's delete function
+  const handleDeleteExpiredProducts = () => {
+    fetch(`http://localhost:5000/foods/expired/${currentUser}`, {
+      method: 'DELETE',
+    })
+      .then((res) => res.json())
+      .then(() => {
+        setExpiredFoods([]); // Clear expired foods from state
+      })
+      .catch((err) => console.error('Eroare la ștergerea produselor expirate:', err));
   };
 
   const handleEditClick = (index) => {
