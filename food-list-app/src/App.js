@@ -22,6 +22,8 @@ function App() {
     expirationDate: '', 
     categories: [] 
   });
+  const today = new Date().toISOString().split('T')[0];
+
 
   
   // New state for authentication
@@ -70,7 +72,6 @@ function App() {
   };
 
   const preventDateTyping = (e) => {
-    // Prevent any key input except Tab and Enter for navigation
     if (e.key !== 'Tab' && e.key !== 'Enter') {
       e.preventDefault();
     }
@@ -346,7 +347,9 @@ function App() {
           />
           <input
             type="date"
+            min={today}
             value={expirationDate}
+            onKeyDown={preventDateTyping}
             onChange={(e) => setExpirationDate(e.target.value)}
             style={{ padding: '8px' }}
           />

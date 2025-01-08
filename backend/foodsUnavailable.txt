@@ -2,24 +2,9 @@
   "util1": [
     {
       "name": "aada",
-      "expirationDate": "2025-02-14",
+      "expirationDate": "2025-01-09",
       "categories": [
         "Cereale"
-      ]
-    },
-    {
-      "name": "ac",
-      "expirationDate": "2025-01-08",
-      "categories": [
-        "Dulciuri",
-        "Băuturi"
-      ]
-    },
-    {
-      "name": "adcdad",
-      "expirationDate": "2025-01-08",
-      "categories": [
-        "Băuturi"
       ]
     },
     {
