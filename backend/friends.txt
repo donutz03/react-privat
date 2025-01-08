@@ -4,6 +4,8 @@
       "ad"
     ],
     "groups": [],
-    "sharedListAccess": []
+    "sharedListAccess": [
+      "ad"
+    ]
   }
 }

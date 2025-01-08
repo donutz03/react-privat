@@ -4,7 +4,6 @@ import { Bell } from 'lucide-react';
 const NotificationBell = ({ foods, onMarkAvailable }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   
-  // Filter foods that are near expiration and get their original indices
   const nearExpirationFoods = foods
     .map((food, index) => ({ ...food, originalIndex: index }))
     .filter(food => food.isNearExpiration);
