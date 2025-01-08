@@ -1,8 +1,8 @@
 {
   "util1": [
     {
-      "name": "a",
-      "expirationDate": "2025-02-06",
+      "name": "aada",
+      "expirationDate": "2025-02-14",
       "categories": [
         "Cereale"
       ]
@@ -19,6 +19,14 @@
       "name": "adcdad",
       "expirationDate": "2025-01-08",
       "categories": [
+        "Băuturi"
+      ]
+    },
+    {
+      "name": "adaaaadaa",
+      "expirationDate": "2025-01-09",
+      "categories": [
+        "Condimente",
         "Băuturi"
       ]
     }
