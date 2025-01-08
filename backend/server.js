@@ -7,6 +7,7 @@ const config = require('./config/config');
 const authRoutes = require('./routes/auth');
 const foodsRoutes = require('./routes/foods');
 const categoriesRoutes = require('./routes/categories');
+const friendsRoutes = require('./routes/friends');  // New import
 
 const app = express();
 
@@ -18,5 +19,6 @@ app.use(bodyParser.json());
 app.use('/auth', authRoutes);
 app.use('/foods', foodsRoutes);
 app.use('/categories', categoriesRoutes);
+app.use('/friends', friendsRoutes);
 
 app.listen(config.PORT, () => console.log(`Serverul rulează pe http://localhost:${config.PORT}`));
