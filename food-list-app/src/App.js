@@ -193,7 +193,6 @@ function App() {
       .catch((err) => console.error('Eroare la ștergere:', err));
   };
   
-  // Update editUnavailableFoodItem function
   const editUnavailableFoodItem = (index) => {
     if (!editFood.name || !editFood.expirationDate || editFood.categories.length === 0) {
       alert('Vă rugăm completați toate câmpurile și selectați cel puțin o categorie!');
@@ -208,12 +207,11 @@ function App() {
       .then((res) => res.json())
       .then((data) => {
         setSharedFoods(data);
-        setUnavailableEditingIndex(null);
+        setAvailableEditingIndex(null);  // Corectare aici - folosim indexul corect
         setEditFood({ name: '', expirationDate: '', categories: [] });
       })
       .catch((err) => console.error('Eroare la editare:', err));
   };
-
   
 
  
