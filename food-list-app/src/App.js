@@ -46,24 +46,24 @@ function App() {
         setFoods(sanitizedData);
       })
       .catch((err) => console.error('Eroare la încărcarea alimentelor:', err));
-
-    // Load unavailable foods
-    fetch(`http://localhost:5000/foods-unavailable/${currentUser}`)
+  
+    // Load unavailable foods - FIXED URL
+    fetch(`http://localhost:5000/foods/unavailable/${currentUser}`)
       .then((res) => res.json())
       .then((data) => {
         setUnavailableFoods(data);
       })
       .catch((err) => console.error('Eroare la încărcarea alimentelor indisponibile:', err));
-
-    // Load expired foods
-    fetch(`http://localhost:5000/foods-expired/${currentUser}`)
+  
+    // Load expired foods - FIXED URL
+    fetch(`http://localhost:5000/foods/expired/${currentUser}`)
       .then((res) => res.json())
       .then((data) => {
         setExpiredFoods(data);
       })
       .catch((err) => console.error('Eroare la încărcarea alimentelor expirate:', err));
-
-      fetch('http://localhost:5000/categories')
+  
+    fetch('http://localhost:5000/categories')
       .then((res) => res.json())
       .then((data) => setAvailableCategories(data))
       .catch((err) => console.error('Eroare la încărcarea categoriilor:', err));
