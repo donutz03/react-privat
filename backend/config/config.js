@@ -5,7 +5,8 @@ const config = {
       users: './users.txt',
       categories: './tipuriMancare.txt',
       foodsUnavailable: './foodsUnavailable.txt',
-      expiredProducts: './produseExpirate.txt'
+      expiredProducts: './produseExpirate.txt',
+      friends: './friends.txt'
     }
   };
   
