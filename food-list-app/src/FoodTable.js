@@ -22,6 +22,15 @@ const FoodTable = ({
       e.preventDefault();
     }
   };
+
+  const isNearExpiration = (expirationDate) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const expDate = new Date(expirationDate);
+    const diffTime = expDate.getTime() - today.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays <= 3 && diffDays >= 0;
+  };
   const handleCancel = () => {
     if (isAvailableTable) {
       setUnavailableEditingIndex(null);
@@ -105,12 +114,14 @@ const FoodTable = ({
                     Șterge
                   </button>
                   {isAvailableTable ? (
-                    <button 
-                      onClick={() => handleMarkAvailability(index, true)}
-                      style={{ padding: '4px 8px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                    >
-                      Marchează disponibil
-                    </button>
+                    isNearExpiration(food.expirationDate) && (
+                      <button 
+                        onClick={() => handleMarkAvailability(index, true)}
+                        style={{ padding: '4px 8px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                      >
+                        Marchează disponibil
+                      </button>
+                    )
                   ) : (
                     <button 
                       onClick={() => handleMarkAvailability(index, false)}
