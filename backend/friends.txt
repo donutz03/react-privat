@@ -1,12 +1,8 @@
 {
   "util1": {
-    "friends": [
-      "ad"
-    ],
+    "friends": [],
     "groups": [],
-    "sharedListAccess": [
-      "ad"
-    ]
+    "sharedListAccess": []
   },
   "tags": {
     "friends": [],

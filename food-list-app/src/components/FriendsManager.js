@@ -34,9 +34,10 @@ const FriendsManager = ({ currentUser }) => {
     try {
       const response = await fetch('http://localhost:5000/friends/tags');
       const data = await response.json();
-      setAvailableTags(data);
+      setAvailableTags(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Eroare la încărcarea etichetelor disponibile:', err);
+      setAvailableTags([]);
     }
   };
 
@@ -83,11 +84,11 @@ const FriendsManager = ({ currentUser }) => {
         body: JSON.stringify({ tags: newTags })
       });
 
-      const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.message);
+        throw new Error('Eroare la actualizarea etichetelor');
       }
 
+      const data = await response.json();
       setFriends(data.friends);
       setFilteredFriends(data.friends);
     } catch (err) {
@@ -108,11 +109,11 @@ const FriendsManager = ({ currentUser }) => {
         body: JSON.stringify({ selectedFriends: newAccess })
       });
 
-      const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.message);
+        throw new Error('Eroare la actualizarea accesului');
       }
 
+      const data = await response.json();
       setSharedListAccess(data.sharedListAccess);
     } catch (err) {
       setError('Eroare la actualizarea accesului');
@@ -121,7 +122,7 @@ const FriendsManager = ({ currentUser }) => {
   };
 
   const handleFilterChange = async (selectedTags) => {
-    if (selectedTags.length === 0) {
+    if (!selectedTags || selectedTags.length === 0) {
       setFilteredFriends(friends);
       return;
     }
@@ -196,8 +197,6 @@ const FriendsManager = ({ currentUser }) => {
         </div>
       )}
 
-      <FriendFilter onFilterChange={handleFilterChange} />
-
       <div style={{ marginTop: '20px' }}>
         {Object.entries(filteredFriends).map(([friendUsername, friendTags]) => (
           <div
@@ -223,7 +222,7 @@ const FriendsManager = ({ currentUser }) => {
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {availableTags.map(tag => (
+              {Array.isArray(availableTags) && availableTags.map(tag => (
                 <button
                   key={tag}
                   onClick={() => toggleTag(friendUsername, tag)}
@@ -231,8 +230,8 @@ const FriendsManager = ({ currentUser }) => {
                     padding: '4px 12px',
                     border: 'none',
                     borderRadius: '16px',
-                    backgroundColor: friendTags.includes(tag) ? '#2196F3' : '#e0e0e0',
-                    color: friendTags.includes(tag) ? 'white' : 'black',
+                    backgroundColor: (friendTags || []).includes(tag) ? '#2196F3' : '#e0e0e0',
+                    color: (friendTags || []).includes(tag) ? 'white' : 'black',
                     cursor: 'pointer',
                     fontSize: '14px'
                   }}
