@@ -6,7 +6,8 @@ const config = {
       categories: './tipuriMancare.txt',
       foodsUnavailable: './foodsUnavailable.txt',
       expiredProducts: './produseExpirate.txt',
-      friends: './friends.txt'
+      friends: './friends.txt',
+      friendTags: './tipuriPrieteni.txt'
     }
   };
   

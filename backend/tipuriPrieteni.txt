@@ -1,0 +1,8 @@
+[
+  "carnivor",
+  "vegetarian",
+  "iubitor de zacusca",
+  "vegan",
+  "iubitor de dulce",
+  "iubitor de picant"
+]
