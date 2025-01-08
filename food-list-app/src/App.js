@@ -213,28 +213,6 @@ function App() {
       })
       .catch((err) => console.error('Eroare la editare:', err));
   };
-  
-  // Update ExpiredProductsTable's delete function
-  const handleDeleteExpiredProducts = () => {
-    fetch(`http://localhost:5000/foods/expired/${currentUser}`, {
-      method: 'DELETE',
-    })
-      .then((res) => res.json())
-      .then(() => {
-        setExpiredFoods([]); // Clear expired foods from state
-      })
-      .catch((err) => console.error('Eroare la ștergerea produselor expirate:', err));
-  };
-
-  const handleEditClick = (index) => {
-    setUnavailableEditingIndex(index);
-    const food = foods[index];
-    setEditFood({
-      name: food.name,
-      expirationDate: food.expirationDate,
-      categories: food.categories
-    });
-  };
 
   
 

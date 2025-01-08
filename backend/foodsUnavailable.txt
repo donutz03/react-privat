@@ -1,10 +1,10 @@
 {
   "util1": [
     {
-      "name": "adcdadaaa",
-      "expirationDate": "2025-01-08",
+      "name": "a",
+      "expirationDate": "2025-02-06",
       "categories": [
-        "Băuturi"
+        "Cereale"
       ]
     },
     {
