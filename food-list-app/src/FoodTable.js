@@ -1,18 +1,30 @@
-import CategoryCheckboxes from "./CategoryCheckboxes";
-const FoodTable = ({  foods, 
-    isAvailableTable = true,
-    onDelete,
-    editingIndex,
-    editFood,
-    setEditFood,
-    onEditSave,
-    onEditClick,
-    handleEditCategoryChange, 
-setUnavailableEditingIndex,
-availableCategories}) => {
-        const today = new Date().toISOString().split('T')[0];
+// FoodTable.js
+const FoodTable = ({ 
+  foods,
+  isAvailableTable,
+  onDelete,
+  editingIndex,
+  setUnavailableEditingIndex, // vom înlocui acest prop
+  editFood,
+  setEditFood,
+  onEditSave,
+  onEditClick,
+  handleEditCategoryChange,
+  availableCategories
+}) => {
+  const today = new Date().toISOString().split('T')[0];
 
-        return (
+  const handleCancel = () => {
+    if (isAvailableTable) {
+      setUnavailableEditingIndex(null);
+    } else {
+      // Folosim props-ul corect pentru tabelul de produse partajate
+      setAvailableEditingIndex(null);
+    }
+    setEditFood({ name: '', expirationDate: '', categories: [] });
+  };
+
+  return (
     <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
       <thead>
         <tr>
@@ -25,8 +37,7 @@ availableCategories}) => {
       <tbody>
         {foods.map((food, index) => (
           <tr key={index}>
-             {editingIndex === index ? (
-              // Edit mode
+            {editingIndex === index ? (
               <>
                 <td style={{ border: '1px solid #ddd', padding: '8px' }}>
                   <input
@@ -60,10 +71,7 @@ availableCategories}) => {
                     Salvează
                   </button>
                   <button 
-                    onClick={() => {
-                      setUnavailableEditingIndex(null);
-                      setEditFood({ name: '', expirationDate: '', categories: [] });
-                    }}
+                    onClick={handleCancel}
                     style={{ padding: '4px 8px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                   >
                     Anulează
@@ -71,7 +79,6 @@ availableCategories}) => {
                 </td>
               </>
             ) : (
-              // Display mode
               <>
                 <td style={{ border: '1px solid #ddd', padding: '8px' }}>{food.name}</td>
                 <td style={{ border: '1px solid #ddd', padding: '8px' }}>{food.expirationDate}</td>
@@ -89,7 +96,6 @@ availableCategories}) => {
                   >
                     Șterge
                   </button>
-                  {/* ... rest of your buttons ... */}
                 </td>
               </>
             )}
@@ -97,6 +103,7 @@ availableCategories}) => {
         ))}
       </tbody>
     </table>
-  )};
+  );
+};
 
-  export default FoodTable;
+export default FoodTable;
