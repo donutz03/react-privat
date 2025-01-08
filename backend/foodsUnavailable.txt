@@ -6,6 +6,14 @@
       "categories": [
         "Cereale"
       ]
+    },
+    {
+      "name": "dasdad",
+      "expirationDate": "2025-01-09",
+      "categories": [
+        "Legume",
+        "Carne"
+      ]
     }
   ],
   "util2": [],
