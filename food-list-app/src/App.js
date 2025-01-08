@@ -8,8 +8,8 @@ import CategoryCheckboxes from './CategoryCheckboxes';
 
 
 function App() {
-  const [foods, setFoods] = useState([]);
-  const [unavailableFoods, setUnavailableFoods] = useState([]);
+  const [personalFoods, setPersonalFoods] = useState([]);
+  const [sharedFoods, setSharedFoods] = useState([]);
   const [expiredFoods, setExpiredFoods] = useState([]);
   const [newFood, setNewFood] = useState('');
   const [expirationDate, setExpirationDate] = useState('');
@@ -43,7 +43,7 @@ function App() {
           ...food,
           categories: Array.isArray(food.categories) ? food.categories : []
         }));
-        setFoods(sanitizedData);
+        setPersonalFoods(sanitizedData);
       })
       .catch((err) => console.error('Eroare la încărcarea alimentelor:', err));
   
@@ -51,7 +51,7 @@ function App() {
     fetch(`http://localhost:5000/foods/unavailable/${currentUser}`)
       .then((res) => res.json())
       .then((data) => {
-        setUnavailableFoods(data);
+        setSharedFoods(data);
       })
       .catch((err) => console.error('Eroare la încărcarea alimentelor indisponibile:', err));
   
@@ -84,8 +84,8 @@ function App() {
     })
       .then((res) => res.json())
       .then((data) => {
-        setFoods(data.available);
-        setUnavailableFoods(data.unavailable);
+        setPersonalFoods(data.available);
+        setSharedFoods(data.unavailable);
       })
       .catch((err) => console.error('Eroare la modificarea disponibilității:', err));
   };
@@ -113,7 +113,7 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('currentUser');
     setCurrentUser(null);
-    setFoods([]);
+    setPersonalFoods([]);
   };
 
   const handleLogin = (username) => {
@@ -147,7 +147,7 @@ function App() {
           ...food,
           categories: Array.isArray(food.categories) ? food.categories : []
         }));
-        setFoods(sanitizedData);
+        setPersonalFoods(sanitizedData);
         setNewFood('');
         setExpirationDate('');
         setSelectedCategories([]);
@@ -160,7 +160,7 @@ function App() {
       method: 'DELETE',
     })
       .then((res) => res.json())
-      .then((data) => setFoods(data))
+      .then((data) => setPersonalFoods(data))
       .catch((err) => console.error('Eroare la ștergere:', err));
   };
 
@@ -177,7 +177,7 @@ function App() {
     })
       .then((res) => res.json())
       .then((data) => {
-        setFoods(data);
+        setPersonalFoods(data);
         setUnavailableEditingIndex(null);
         setEditFood({ name: '', expirationDate: '', categories: [] });
       })
@@ -189,7 +189,7 @@ function App() {
       method: 'DELETE',
     })
       .then((res) => res.json())
-      .then((data) => setUnavailableFoods(data))
+      .then((data) => setSharedFoods(data))
       .catch((err) => console.error('Eroare la ștergere:', err));
   };
   
@@ -207,7 +207,7 @@ function App() {
     })
       .then((res) => res.json())
       .then((data) => {
-        setUnavailableFoods(data);
+        setSharedFoods(data);
         setUnavailableEditingIndex(null);
         setEditFood({ name: '', expirationDate: '', categories: [] });
       })
@@ -317,7 +317,7 @@ function App() {
         <h1>Lista de Alimente - {currentUser}</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <NotificationBell 
-            foods={foods}
+            foods={personalFoods}
             onMarkAvailable={(index) => handleMarkAvailability(index, true)}
           />
           <button 
@@ -374,7 +374,7 @@ function App() {
   <FoodTable 
   setUnavailableEditingIndex={setUnavailableEditingIndex}
   availableCategories={availableCategories}
-    foods={foods} 
+    foods={personalFoods} 
     isAvailableTable={true}
     onDelete={deleteFood}
     editingIndex={unavailableEditingIndex}
@@ -398,7 +398,7 @@ function App() {
   <FoodTable 
     availableCategories={availableCategories}
     setUnavailableEditingIndex={setUnavailableEditingIndex}
-    foods={unavailableFoods} 
+    foods={sharedFoods} 
     isAvailableTable={false}
     onDelete={deleteUnavailableFood}
     editingIndex={availableEditingIndex}
