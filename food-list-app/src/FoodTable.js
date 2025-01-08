@@ -17,7 +17,11 @@ const FoodTable = ({
   handleMarkAvailability
 }) => {
   const today = new Date().toISOString().split('T')[0];
-
+  const preventDateTyping = (e) => {
+    if (e.key !== 'Tab' && e.key !== 'Enter') {
+      e.preventDefault();
+    }
+  };
   const handleCancel = () => {
     if (isAvailableTable) {
       setUnavailableEditingIndex(null);
@@ -54,6 +58,7 @@ const FoodTable = ({
                   <input
                     type="date"
                     value={editFood.expirationDate}
+                    onKeyDown={preventDateTyping}
                     min={today}
                     onChange={(e) => setEditFood(prev => ({ ...prev, expirationDate: e.target.value }))}
                     style={{ width: '100%', padding: '4px' }}

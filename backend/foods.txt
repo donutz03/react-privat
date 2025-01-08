@@ -1,5 +1,29 @@
 {
-  "util1": [],
+  "util1": [
+    {
+      "name": "adaaaadaa",
+      "expirationDate": "2025-01-16",
+      "categories": [
+        "Condimente",
+        "Băuturi"
+      ]
+    },
+    {
+      "name": "dasdad",
+      "expirationDate": "2025-01-09",
+      "categories": [
+        "Legume",
+        "Carne"
+      ]
+    },
+    {
+      "name": "222",
+      "expirationDate": "2025-01-11",
+      "categories": [
+        "Condimente"
+      ]
+    }
+  ],
   "util2": [
     {
       "name": "aaaaaa",
