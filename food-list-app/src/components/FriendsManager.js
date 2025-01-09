@@ -3,13 +3,17 @@ import FriendFilter from './FriendFilter';
 
 const FriendsManager = ({ currentUser }) => {
   const [friends, setFriends] = useState({});
+  const [filteredFriends, setFilteredFriends] = useState({});
   const [sharedListAccess, setSharedListAccess] = useState([]);
   const [newFriend, setNewFriend] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
   const [availableTags, setAvailableTags] = useState([]);
-  const [filteredFriends, setFilteredFriends] = useState({});
+  const [groups, setGroups] = useState([]);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [selectedGroup, setSelectedGroup] = useState(null);
+  const [selectedFriendsForGroup, setSelectedFriendsForGroup] = useState([]);
 
   useEffect(() => {
     fetchFriendsData();
@@ -23,10 +27,45 @@ const FriendsManager = ({ currentUser }) => {
       setFriends(data.friends || {});
       setFilteredFriends(data.friends || {});
       setSharedListAccess(data.sharedListAccess || []);
+      setGroups(data.groups || []);
       setLoading(false);
     } catch (err) {
       setError('Eroare la încărcarea prietenilor');
       setLoading(false);
+    }
+  };
+
+  const handleCreateGroup = () => {
+    if (!newGroupName.trim()) {
+      setError('Introduceți un nume pentru grup');
+      return;
+    }
+
+    const newGroup = {
+      name: newGroupName,
+      members: selectedFriendsForGroup
+    };
+
+    setGroups([...groups, newGroup]);
+    setNewGroupName('');
+    setSelectedFriendsForGroup([]);
+    setSuccess('Grup creat cu succes!');
+    setTimeout(() => setSuccess(''), 3000);
+  };
+
+  const handleFilterChange = async (selectedTags) => {
+    if (!selectedTags || selectedTags.length === 0) {
+      setFilteredFriends(friends);
+      return;
+    }
+
+    try {
+      const queryParams = selectedTags.join(',');
+      const response = await fetch(`http://localhost:5000/friends/${currentUser}/filter?tags=${queryParams}`);
+      const data = await response.json();
+      setFilteredFriends(data.friends);
+    } catch (err) {
+      console.error('Eroare la filtrarea prietenilor:', err);
     }
   };
 
@@ -126,30 +165,21 @@ const FriendsManager = ({ currentUser }) => {
     }
   };
 
-  const handleFilterChange = async (selectedTags) => {
-    if (!selectedTags || selectedTags.length === 0) {
-      setFilteredFriends(friends);
-      return;
-    }
-
-    try {
-      const queryParams = selectedTags.join(',');
-      const response = await fetch(`http://localhost:5000/friends/${currentUser}/filter?tags=${queryParams}`);
-      const data = await response.json();
-      setFilteredFriends(data.friends);
-    } catch (err) {
-      console.error('Eroare la filtrarea prietenilor:', err);
-    }
-  };
-
   if (loading) {
     return <div style={{ textAlign: 'center', padding: '1rem' }}>Se încarcă...</div>;
   }
-
   return (
     <div style={{ padding: '20px' }}>
-      <h2 style={{ marginBottom: '20px' }}>Gestionare Prieteni</h2>
+      <h2 style={{ marginBottom: '20px' }}>
+        Gestionare Prieteni 
+        <span style={{ fontSize: '0.8em', marginLeft: '10px', color: '#666' }}>
+          (Total prieteni: {Object.keys(friends).length})
+        </span>
+      </h2>
       
+      <FriendFilter onFilterChange={handleFilterChange} />
+
+      {/* Adăugare prieten nou */}
       <div style={{ marginBottom: '20px' }}>
         <input
           type="text"
@@ -178,6 +208,79 @@ const FriendsManager = ({ currentUser }) => {
         </button>
       </div>
 
+      {/* Creare grup nou */}
+      <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
+        <h3>Creare Grup Nou</h3>
+        <input
+          type="text"
+          value={newGroupName}
+          onChange={(e) => setNewGroupName(e.target.value)}
+          placeholder="Nume grup"
+          style={{
+            padding: '8px',
+            marginRight: '10px',
+            borderRadius: '4px',
+            border: '1px solid #ccc'
+          }}
+        />
+        <div style={{ marginTop: '10px', marginBottom: '10px' }}>
+          <h4>Selectează membri:</h4>
+          {Object.keys(friends).map(friend => (
+            <label key={friend} style={{ display: 'block', marginBottom: '5px' }}>
+              <input
+                type="checkbox"
+                checked={selectedFriendsForGroup.includes(friend)}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setSelectedFriendsForGroup([...selectedFriendsForGroup, friend]);
+                  } else {
+                    setSelectedFriendsForGroup(
+                      selectedFriendsForGroup.filter(f => f !== friend)
+                    );
+                  }
+                }}
+              />
+              <span style={{ marginLeft: '5px' }}>{friend}</span>
+            </label>
+          ))}
+        </div>
+        <button
+          onClick={handleCreateGroup}
+          style={{
+            padding: '8px 16px',
+            backgroundColor: '#2196F3',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          Creează Grup
+        </button>
+      </div>
+
+      {/* Lista grupuri */}
+      {groups.length > 0 && (
+        <div style={{ marginBottom: '20px' }}>
+          <h3>Grupuri</h3>
+          {groups.map((group, index) => (
+            <div
+              key={index}
+              style={{
+                padding: '10px',
+                backgroundColor: '#e3f2fd',
+                borderRadius: '4px',
+                marginBottom: '10px'
+              }}
+            >
+              <h4>{group.name}</h4>
+              <p>Membri: {group.members.join(', ')}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Mesaje de eroare și succes */}
       {error && (
         <div style={{
           padding: '10px',
@@ -202,6 +305,7 @@ const FriendsManager = ({ currentUser }) => {
         </div>
       )}
 
+      {/* Lista de prieteni filtrată */}
       <div style={{ marginTop: '20px' }}>
         {Object.entries(filteredFriends).map(([friendUsername, friendTags]) => (
           <div
