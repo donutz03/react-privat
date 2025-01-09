@@ -19,6 +19,7 @@ router.get('/:username', (req, res) => {
   if (!friendsData[username]) {
     friendsData[username] = {
       friends: {},
+      groups: [],
       sharedListAccess: []
     };
     writeFile(config.FILES.friends, friendsData);
@@ -36,6 +37,7 @@ router.get('/:username', (req, res) => {
   
   res.json({
     friends: friendsData[username].friends || {},
+    groups: friendsData[username].groups || [],
     sharedListAccess: friendsData[username].sharedListAccess || []
   });
 });
@@ -192,5 +194,36 @@ router.get('/:username/filter', (req, res) => {
     }, {});
 
   res.json({ friends: filteredFriends });
+});
+
+router.post('/:username/groups', (req, res) => {
+  const { username } = req.params;
+  const { groupName, members } = req.body;
+  
+  const friendsData = readFile(config.FILES.friends);
+  const allMembers = [username, ...members]; // Include creator in members list
+  
+  // Adaugă grupul pentru fiecare membru (inclusiv creatorul)
+  allMembers.forEach(member => {
+    if (!friendsData[member]) {
+      friendsData[member] = { friends: {}, groups: [], sharedListAccess: [] };
+    }
+    if (!friendsData[member].groups) {
+      friendsData[member].groups = [];
+    }
+    friendsData[member].groups.push({ 
+      name: groupName, 
+      members: allMembers,
+      createdBy: username 
+    });
+  });
+
+  writeFile(config.FILES.friends, friendsData);
+  
+  res.json({
+    friends: friendsData[username].friends,
+    groups: friendsData[username].groups,
+    sharedListAccess: friendsData[username].sharedListAccess
+  });
 });
 module.exports = router;

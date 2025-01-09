@@ -1,16 +1,12 @@
 {
   "util1": {
     "friends": {
-      "ad": [],
-      "util1": [
-        "iubitor de zacusca",
-        "vegan"
-      ],
       "util2": [
         "iubitor de picant",
         "iubitor de dulce",
         "vegetarian"
-      ]
+      ],
+      "util3": []
     },
     "groups": [],
     "sharedListAccess": [
