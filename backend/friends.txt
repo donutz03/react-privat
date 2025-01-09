@@ -4,7 +4,8 @@
       "util2": [
         "iubitor de picant",
         "iubitor de dulce",
-        "vegetarian"
+        "vegetarian",
+        "carnivor"
       ],
       "util3": [
         "vegetarian"
@@ -19,19 +20,26 @@
           "util3"
         ],
         "createdBy": "util1"
+      },
+      {
+        "name": "gratar",
+        "members": [
+          "util1",
+          "util2"
+        ],
+        "createdBy": "util1"
       }
     ],
     "sharedListAccess": [
-      "util1"
+      "util2"
     ]
   },
-  "tags": {
-    "friends": [],
-    "groups": [],
-    "sharedListAccess": []
-  },
   "util2": {
-    "friends": {},
+    "friends": {
+      "util1": [
+        "vegetarian"
+      ]
+    },
     "groups": [
       {
         "name": "dadda",
@@ -41,9 +49,19 @@
           "util3"
         ],
         "createdBy": "util1"
+      },
+      {
+        "name": "gratar",
+        "members": [
+          "util1",
+          "util2"
+        ],
+        "createdBy": "util1"
       }
     ],
-    "sharedListAccess": []
+    "sharedListAccess": [
+      "util1"
+    ]
   },
   "util3": {
     "friends": {},

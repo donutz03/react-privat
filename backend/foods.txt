@@ -9,21 +9,32 @@
       ]
     },
     {
-      "name": "222",
-      "expirationDate": "2025-01-11",
+      "name": "dasdad",
+      "expirationDate": "2025-01-09",
       "categories": [
-        "Condimente"
+        "Legume",
+        "Carne"
       ]
-    }
-  ],
-  "util2": [
+    },
     {
-      "name": "aaaaaa",
-      "expirationDate": "2025-01-10",
+      "name": "aada",
+      "expirationDate": "2025-01-09",
       "categories": [
         "Cereale"
       ]
     }
   ],
-  "util3": []
+  "util2": [
+    {
+      "name": "dadada",
+      "expirationDate": "2025-01-29",
+      "categories": [
+        "Legume",
+        "Carne",
+        "Produse de panificație"
+      ]
+    }
+  ],
+  "util3": [],
+  "null": []
 }
