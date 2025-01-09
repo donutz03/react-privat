@@ -6,7 +6,9 @@
         "iubitor de dulce",
         "vegetarian"
       ],
-      "util3": []
+      "util3": [
+        "vegetarian"
+      ]
     },
     "groups": [
       {

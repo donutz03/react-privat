@@ -226,4 +226,30 @@ router.post('/:username/groups', (req, res) => {
     sharedListAccess: friendsData[username].sharedListAccess
   });
 });
+
+// Adaugă în friends.js
+router.get('/:username/shared-products', (req, res) => {
+  const { username } = req.params;
+  const friendsData = readFile(config.FILES.friends);
+  const foods = readFile(config.FILES.foods);
+  const foodsUnavailable = readFile(config.FILES.foodsUnavailable);
+  
+  // Găsește prietenii care au dat acces la lista lor
+  const friendsWithAccess = Object.entries(friendsData)
+    .filter(([friend, data]) => 
+      friend !== username && // Excludem utilizatorul curent
+      data.sharedListAccess && 
+      data.sharedListAccess.includes(username)
+    )
+    .reduce((acc, [friend]) => {
+      // Colectează produsele disponibile ale prietenului
+      const availableProducts = foodsUnavailable[friend] || [];
+      if (availableProducts.length > 0) {
+        acc[friend] = availableProducts;
+      }
+      return acc;
+    }, {});
+
+  res.json(friendsWithAccess);
+});
 module.exports = router;
