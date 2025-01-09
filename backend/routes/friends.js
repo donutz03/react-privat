@@ -39,7 +39,37 @@ router.get('/:username', (req, res) => {
     sharedListAccess: friendsData[username].sharedListAccess || []
   });
 });
+router.get('/:username/filter', (req, res) => {
+  const { username } = req.params;
+  const { tags } = req.query; // tags va fi un string cu tag-uri separate prin virgulă
+  
+  const friendsData = readFile(config.FILES.friends);
+  const userData = friendsData[username];
+  
+  if (!userData || !userData.friends) {
+    return res.json({ friends: {} });
+  }
 
+  // Dacă nu sunt specificate tag-uri, returnăm toți prietenii
+  if (!tags) {
+    return res.json({ friends: userData.friends });
+  }
+
+  const tagArray = tags.split(',');
+  
+  // Filtrăm prietenii care au toate tag-urile specificate
+  const filteredFriends = Object.entries(userData.friends)
+    .reduce((acc, [friend, friendTags]) => {
+      if (tagArray.every(tag => friendTags.includes(tag))) {
+        acc[friend] = friendTags;
+      }
+      return acc;
+    }, {});
+
+  res.json({ friends: filteredFriends });
+});
+
+// Modificăm ruta de adăugare prieten pentru a preveni auto-adăugarea
 router.post('/:username/add', (req, res) => {
   const { username } = req.params;
   const { friendUsername } = req.body;
@@ -48,7 +78,12 @@ router.post('/:username/add', (req, res) => {
     return res.status(400).json({ message: 'Username-ul prietenului este obligatoriu!' });
   }
 
-  // First check if the friend exists in users.txt
+  // Verificăm dacă utilizatorul încearcă să se adauge pe sine
+  if (username === friendUsername) {
+    return res.status(400).json({ message: 'Nu te poți adăuga pe tine ca prieten!' });
+  }
+
+  // Verificăm dacă prietenul există în users.txt
   const users = readFile(config.FILES.users);
   if (!users[friendUsername]) {
     return res.status(404).json({ message: 'Utilizatorul nu există!' });
@@ -56,7 +91,6 @@ router.post('/:username/add', (req, res) => {
 
   const friendsData = readFile(config.FILES.friends);
   
-  // Initialize user data if doesn't exist
   if (!friendsData[username]) {
     friendsData[username] = {
       friends: {},
@@ -64,15 +98,10 @@ router.post('/:username/add', (req, res) => {
     };
   }
   
-  // Check if already friends
   if (friendsData[username].friends[friendUsername]) {
     return res.status(400).json({ message: 'Utilizatorii sunt deja prieteni!' });
   }
   
-  // Add friend with empty tags array - ensure friends is an object
-  if (!friendsData[username].friends) {
-    friendsData[username].friends = {};
-  }
   friendsData[username].friends[friendUsername] = [];
   writeFile(config.FILES.friends, friendsData);
   
