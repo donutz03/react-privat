@@ -24,7 +24,20 @@ router.get('/:username', (req, res) => {
     writeFile(config.FILES.friends, friendsData);
   }
   
-  res.json(friendsData[username]);
+  // Asigură-te că friends este un obiect
+  if (Array.isArray(friendsData[username].friends)) {
+    const convertedFriends = friendsData[username].friends.reduce((acc, friendName) => {
+      acc[friendName] = [];
+      return acc;
+    }, {});
+    friendsData[username].friends = convertedFriends;
+    writeFile(config.FILES.friends, friendsData);
+  }
+  
+  res.json({
+    friends: friendsData[username].friends || {},
+    sharedListAccess: friendsData[username].sharedListAccess || []
+  });
 });
 
 router.post('/:username/add', (req, res) => {
@@ -52,15 +65,21 @@ router.post('/:username/add', (req, res) => {
   }
   
   // Check if already friends
-  if (friendsData[username].friends[friendUsername] !== undefined) {
+  if (friendsData[username].friends[friendUsername]) {
     return res.status(400).json({ message: 'Utilizatorii sunt deja prieteni!' });
   }
   
-  // Add friend with empty tags array
+  // Add friend with empty tags array - ensure friends is an object
+  if (!friendsData[username].friends) {
+    friendsData[username].friends = {};
+  }
   friendsData[username].friends[friendUsername] = [];
   writeFile(config.FILES.friends, friendsData);
   
-  res.json(friendsData[username]);
+  res.json({
+    friends: friendsData[username].friends,
+    sharedListAccess: friendsData[username].sharedListAccess
+  });
 });
 // Update friend tags
 router.put('/:username/friends/:friendUsername/tags', (req, res) => {
