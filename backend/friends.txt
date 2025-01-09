@@ -8,7 +8,17 @@
       ],
       "util3": []
     },
-    "groups": [],
+    "groups": [
+      {
+        "name": "dadda",
+        "members": [
+          "util1",
+          "util2",
+          "util3"
+        ],
+        "createdBy": "util1"
+      }
+    ],
     "sharedListAccess": [
       "util1"
     ]
@@ -16,6 +26,36 @@
   "tags": {
     "friends": [],
     "groups": [],
+    "sharedListAccess": []
+  },
+  "util2": {
+    "friends": {},
+    "groups": [
+      {
+        "name": "dadda",
+        "members": [
+          "util1",
+          "util2",
+          "util3"
+        ],
+        "createdBy": "util1"
+      }
+    ],
+    "sharedListAccess": []
+  },
+  "util3": {
+    "friends": {},
+    "groups": [
+      {
+        "name": "dadda",
+        "members": [
+          "util1",
+          "util2",
+          "util3"
+        ],
+        "createdBy": "util1"
+      }
+    ],
     "sharedListAccess": []
   }
 }

@@ -35,22 +35,42 @@ const FriendsManager = ({ currentUser }) => {
     }
   };
 
-  const handleCreateGroup = () => {
+  const handleCreateGroup = async () => {
     if (!newGroupName.trim()) {
       setError('Introduceți un nume pentru grup');
       return;
     }
-
-    const newGroup = {
-      name: newGroupName,
-      members: selectedFriendsForGroup
-    };
-
-    setGroups([...groups, newGroup]);
-    setNewGroupName('');
-    setSelectedFriendsForGroup([]);
-    setSuccess('Grup creat cu succes!');
-    setTimeout(() => setSuccess(''), 3000);
+  
+    if (selectedFriendsForGroup.length === 0) {
+      setError('Selectați cel puțin un prieten pentru grup');
+      return;
+    }
+  
+    try {
+      const response = await fetch(`http://localhost:5000/friends/${currentUser}/groups`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          groupName: newGroupName,
+          members: selectedFriendsForGroup
+        })
+      });
+  
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message);
+      }
+  
+      setGroups(data.groups);
+      setNewGroupName('');
+      setSelectedFriendsForGroup([]);
+      setSuccess('Grup creat cu succes!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err.message || 'Eroare la crearea grupului');
+      setTimeout(() => setError(''), 3000);
+    }
   };
 
   const handleFilterChange = async (selectedTags) => {
