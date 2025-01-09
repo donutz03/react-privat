@@ -40,26 +40,31 @@ const FriendsManager = ({ currentUser }) => {
       setAvailableTags([]);
     }
   };
-
   const addFriend = async () => {
     if (!newFriend.trim()) {
       setError('Introduceți un nume de utilizator');
       return;
     }
-
+  
     try {
       const response = await fetch(`http://localhost:5000/friends/${currentUser}/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ friendUsername: newFriend })
       });
-
+  
       const data = await response.json();
-
+  
+      if (response.status === 404) {
+        setError('Utilizatorul nu există!');
+        setTimeout(() => setError(''), 3000);
+        return;
+      }
+  
       if (!response.ok) {
         throw new Error(data.message);
       }
-
+  
       setFriends(data.friends);
       setFilteredFriends(data.friends);
       setNewFriend('');

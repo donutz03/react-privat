@@ -35,6 +35,12 @@ router.post('/:username/add', (req, res) => {
     return res.status(400).json({ message: 'Username-ul prietenului este obligatoriu!' });
   }
 
+  // First check if the friend exists in users.txt
+  const users = readFile(config.FILES.users);
+  if (!users[friendUsername]) {
+    return res.status(404).json({ message: 'Utilizatorul nu există!' });
+  }
+
   const friendsData = readFile(config.FILES.friends);
   
   // Initialize user data if doesn't exist
@@ -56,7 +62,6 @@ router.post('/:username/add', (req, res) => {
   
   res.json(friendsData[username]);
 });
-
 // Update friend tags
 router.put('/:username/friends/:friendUsername/tags', (req, res) => {
   const { username, friendUsername } = req.params;
