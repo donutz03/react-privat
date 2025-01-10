@@ -30,14 +30,22 @@ function App() {
 
 
   
-  // New state for authentication
-  const [currentUser, setCurrentUser] = useState(localStorage.getItem('currentUser'));
+  const [currentUser, setCurrentUser] = useState(() => {
+    const savedUser = localStorage.getItem('currentUser');
+    return savedUser || null;
+  });
   const [showRegister, setShowRegister] = useState(false);
   useEffect(() => {
-    if (currentUser) {
-      // Load all types of foods after login
-      loadAllFoods();
-    }
+    const loadData = async () => {
+      if (currentUser) {
+        try {
+          await loadAllFoods();
+        } catch (error) {
+          console.error('Error loading initial data:', error);
+        }
+      }
+    };
+    loadData();
   }, [currentUser]);
 
   const loadAllFoods = async () => {
@@ -112,9 +120,10 @@ function App() {
   };
 
   const handleLogin = (username) => {
-    setCurrentUser(username);
-    setShowRegister(false);
-    loadAllFoods();
+    if (username) {
+      setCurrentUser(username);
+      setShowRegister(false);
+    }
   };
 
   
@@ -215,54 +224,6 @@ function App() {
   };
 
  
-
-  if (!currentUser) {
-    return (
-      <div>
-        {showRegister ? (
-          <>
-            <Register onRegisterSuccess={() => setShowRegister(false)} />
-            <button 
-              onClick={() => setShowRegister(false)}
-              style={{ 
-                display: 'block', 
-                margin: '0 auto', 
-                padding: '8px 16px',
-                backgroundColor: '#2196F3',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-            >
-              Înapoi la autentificare
-            </button>
-          </>
-        ) : (
-          <>
-            <Login onLogin={handleLogin} />
-            <button 
-              onClick={() => setShowRegister(true)}
-              style={{ 
-                display: 'block', 
-                margin: '0 auto', 
-                padding: '8px 16px',
-                backgroundColor: '#2196F3',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-            >
-              Creează cont nou
-            </button>
-          </>
-        )}
-      </div>
-    );
-  }
-
-  
   if (!currentUser) {
     return (
       <div>

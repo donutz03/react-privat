@@ -17,12 +17,13 @@ function Login({ onLogin }) {
       const data = await response.json();
       
       if (response.ok) {
-        // Store the username and contact info in localStorage for persistence
+        // First store the user data
         localStorage.setItem('currentUser', username);
         localStorage.setItem('userContact', JSON.stringify({
-          phone: data.user.phone,
-          address: data.user.address
+          phone: data.user?.phone,
+          address: data.user?.address
         }));
+        // Then call onLogin
         onLogin(username);
       } else {
         alert(data.message || 'Eroare la autentificare');
