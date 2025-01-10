@@ -91,3 +91,7 @@ ALTER TABLE foods ADD COLUMN is_claimed_product BOOLEAN DEFAULT false;
 
 --am dat drop la claimed_by si shared_by din tabela shared_products
 ALTER TABLE foods ADD COLUMN image_url TEXT;
+
+ALTER TABLE foods DROP COLUMN IF EXISTS image_url;
+ALTER TABLE foods ADD COLUMN image_data BYTEA;
+ALTER TABLE foods ADD COLUMN image_type TEXT;

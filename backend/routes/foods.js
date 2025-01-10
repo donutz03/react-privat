@@ -4,36 +4,24 @@ const db = require('../database/db');
 const { isNearExpiration } = require('../utils/dateHelpers');
 
 const multer = require('multer');
-const path = require('path');
-
-// Configurare storage pentru multer
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/') // Asigură-te că acest director există
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + path.extname(file.originalname))
-  }
-});
-
+const storage = multer.memoryStorage(); // Stocăm imaginea în memorie în loc de disk
 const upload = multer({ 
   storage: storage,
-  fileFilter: function (req, file, cb) {
-    const filetypes = /jpeg|jpg|png/;
-    const mimetype = filetypes.test(file.mimetype);
-    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-
-    if (mimetype && extname) {
-      return cb(null, true);
+  limits: {
+    fileSize: 5 * 1024 * 1024 // Limită de 5MB
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Doar imagini sunt permise!'));
     }
-    cb(new Error('Doar imagini (jpeg, jpg, png) sunt permise!'));
   }
 });
-// Modifică ruta POST pentru adăugarea unui produs nou
+
 router.post('/:username', upload.single('image'), async (req, res) => {
   const { username } = req.params;
   const { name, expirationDate, categories } = req.body;
-  const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
 
   if (!name || !expirationDate || !categories) {
     return res.status(400).json({ 
@@ -51,31 +39,37 @@ router.post('/:username', upload.single('image'), async (req, res) => {
     }
     const userId = userResult.rows[0].id;
 
-    // Inserăm produsul cu imagine
-    const foodResult = await db.query(
-      'INSERT INTO foods (user_id, name, expiration_date, image_url) VALUES ($1, $2, $3, $4) RETURNING id',
-      [userId, name, expirationDate, imageUrl]
-    );
+    // Inserăm produsul cu imagine dacă există
+    let foodResult;
+    if (req.file) {
+      foodResult = await db.query(
+        'INSERT INTO foods (user_id, name, expiration_date, image_data, image_type) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+        [userId, name, expirationDate, req.file.buffer, req.file.mimetype]
+      );
+    } else {
+      foodResult = await db.query(
+        'INSERT INTO foods (user_id, name, expiration_date) VALUES ($1, $2, $3) RETURNING id',
+        [userId, name, expirationDate]
+      );
+    }
     const foodId = foodResult.rows[0].id;
 
-    // Inserăm relațiile cu categoriile
+    // Inserăm categoriile
     const categoriesArray = Array.isArray(categories) ? categories : JSON.parse(categories);
     for (const categoryName of categoriesArray) {
       const categoryResult = await db.query(
         'SELECT id FROM food_categories WHERE name = $1',
         [categoryName]
       );
-      const categoryId = categoryResult.rows[0].id;
-      
       await db.query(
         'INSERT INTO food_category_relations (food_id, category_id) VALUES ($1, $2)',
-        [foodId, categoryId]
+        [foodId, categoryResult.rows[0].id]
       );
     }
 
     await db.query('COMMIT');
 
-    // Returnăm lista actualizată de produse
+    // Returnăm lista actualizată
     const updatedFoods = await getFoodsWithCategories(
       'WHERE f.user_id = $1 AND NOT f.is_available AND NOT f.is_expired',
       [userId]
@@ -88,12 +82,32 @@ router.post('/:username', upload.single('image'), async (req, res) => {
   }
 });
 
-// Modifică funcția getFoodsWithCategories pentru a include și imaginea
+router.get('/image/:foodId', async (req, res) => {
+  try {
+    const result = await db.query(
+      'SELECT image_data, image_type FROM foods WHERE id = $1',
+      [req.params.foodId]
+    );
+    
+    if (result.rows.length === 0 || !result.rows[0].image_data) {
+      return res.status(404).send('Imagine negăsită');
+    }
+
+    const { image_data, image_type } = result.rows[0];
+    res.set('Content-Type', image_type);
+    res.send(image_data);
+  } catch (error) {
+    console.error('Eroare la obținerea imaginii:', error);
+    res.status(500).send('Eroare la obținerea imaginii');
+  }
+});
+
 const getFoodsWithCategories = async (query, params) => {
   const result = await db.query(`
     SELECT f.*, 
            array_agg(fc.name) as categories,
-           to_char(f.expiration_date, 'YYYY-MM-DD') as formatted_date
+           to_char(f.expiration_date, 'YYYY-MM-DD') as formatted_date,
+           CASE WHEN f.image_data IS NOT NULL THEN true ELSE false END as has_image
     FROM foods f
     LEFT JOIN food_category_relations fcr ON f.id = fcr.food_id
     LEFT JOIN food_categories fc ON fcr.category_id = fc.id
@@ -107,7 +121,8 @@ const getFoodsWithCategories = async (query, params) => {
     expirationDate: food.formatted_date,
     categories: food.categories.filter(c => c !== null),
     isNearExpiration: isNearExpiration(new Date(food.formatted_date)),
-    imageUrl: food.image_url
+    hasImage: food.has_image,
+    imageUrl: food.has_image ? `/foods/image/${food.id}` : null
   }));
 };
 router.get('/:username', async (req, res) => {
