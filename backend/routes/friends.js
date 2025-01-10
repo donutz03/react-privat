@@ -634,7 +634,7 @@ router.get('/:username/shared-products', async (req, res) => {
     res.status(500).json({ message: 'Eroare la obținerea produselor partajate' });
   }
 });
-// In friends.js
+// In friends.js - Simplified claim endpoint
 router.post('/:ownerUsername/claim/:foodId', async (req, res) => {
   const { ownerUsername, foodId } = req.params;
   const { claimedBy } = req.body;
@@ -656,9 +656,13 @@ router.post('/:ownerUsername/claim/:foodId', async (req, res) => {
     const ownerId = ownerResult.rows[0].id;
     const claimerId = claimerResult.rows[0].id;
 
-    // Get the food item
+    // Check if the product is available and not expired
     const foodResult = await db.query(
-      'SELECT * FROM foods WHERE id = $1 AND user_id = $2 AND is_available = true AND is_expired = false',
+      `SELECT * FROM foods 
+       WHERE id = $1 
+       AND user_id = $2 
+       AND is_available = true 
+       AND is_expired = false`,
       [foodId, ownerId]
     );
 
@@ -667,11 +671,12 @@ router.post('/:ownerUsername/claim/:foodId', async (req, res) => {
       return res.status(404).json({ message: 'Product not found or not available' });
     }
 
-    const originalFood = foodResult.rows[0];
-
-    // Update the ownership and availability
+    // Update the product ownership and availability
     await db.query(
-      'UPDATE foods SET user_id = $1, is_available = false WHERE id = $2',
+      `UPDATE foods 
+       SET user_id = $1, 
+           is_available = false 
+       WHERE id = $2`,
       [claimerId, foodId]
     );
 
