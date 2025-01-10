@@ -635,4 +635,93 @@ router.get('/:username/shared-products', async (req, res) => {
   }
 });
 
+// POST /foods/:ownerUsername/claim/:foodId - Revendică un produs
+router.post('/:ownerUsername/claim/:foodId', async (req, res) => {
+  const { ownerUsername, foodId } = req.params;
+  const { claimedBy } = req.body; // username-ul persoanei care revendică
+
+  try {
+    await db.query('BEGIN');
+
+    // Obținem ID-urile utilizatorilor
+    const [ownerResult, claimerResult] = await Promise.all([
+      db.query('SELECT id, phone, address FROM users WHERE username = $1', [ownerUsername]),
+      db.query('SELECT id FROM users WHERE username = $1', [claimedBy])
+    ]);
+
+    if (ownerResult.rows.length === 0 || claimerResult.rows.length === 0) {
+      await db.query('ROLLBACK');
+      return res.status(404).json({ message: 'Utilizator negăsit' });
+    }
+
+    const ownerId = ownerResult.rows[0].id;
+    const claimerId = claimerResult.rows[0].id;
+
+    // Verificăm dacă produsul există și este disponibil
+    const foodResult = await db.query(
+      'SELECT * FROM foods WHERE id = $1 AND user_id = $2 AND is_available = true AND is_expired = false',
+      [foodId, ownerId]
+    );
+
+    if (foodResult.rows.length === 0) {
+      await db.query('ROLLBACK');
+      return res.status(404).json({ message: 'Produsul nu a fost găsit sau nu este disponibil' });
+    }
+
+    // Creăm o copie a produsului pentru persoana care revendică
+    const {rows: [newFood]} = await db.query(
+      `INSERT INTO foods 
+        (user_id, name, expiration_date, is_available, claim_status) 
+       VALUES 
+        ($1, $2, $3, false, 'waiting_pickup')
+       RETURNING id`,
+      [claimerId, foodResult.rows[0].name, foodResult.rows[0].expiration_date]
+    );
+
+    // Copiem și categoriile produsului
+    const categoryResult = await db.query(
+      `SELECT category_id FROM food_category_relations WHERE food_id = $1`,
+      [foodId]
+    );
+
+    for (const row of categoryResult.rows) {
+      await db.query(
+        'INSERT INTO food_category_relations (food_id, category_id) VALUES ($1, $2)',
+        [newFood.id, row.category_id]
+      );
+    }
+
+    // Actualizăm statusul produsului original
+    await db.query(
+      'UPDATE foods SET claim_status = $1 WHERE id = $2',
+      ['claimed', foodId]
+    );
+
+    // Creăm înregistrarea în tabela claimed_products
+    await db.query(
+      `INSERT INTO claimed_products 
+        (food_id, claimed_by, original_owner) 
+       VALUES 
+        ($1, $2, $3)`,
+      [foodId, claimerId, ownerId]
+    );
+
+    await db.query('COMMIT');
+
+    // Returnăm datele necesare frontend-ului
+    res.json({
+      message: 'Produs revendicat cu succes',
+      ownerContact: {
+        phone: ownerResult.rows[0].phone,
+        address: ownerResult.rows[0].address
+      }
+    });
+
+  } catch (error) {
+    await db.query('ROLLBACK');
+    console.error('Eroare la revendicarea produsului:', error);
+    res.status(500).json({ message: 'Eroare la revendicarea produsului' });
+  }
+});
+
 module.exports = router;
