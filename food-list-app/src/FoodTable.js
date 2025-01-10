@@ -5,9 +5,8 @@ const FoodTable = ({
   foods,
   isAvailableTable,
   onDelete,
-  editingIndex,
-  setUnavailableEditingIndex,
-  setAvailableEditingIndex, // Adăugat în props
+  editingId,  // Modificat din editingIndex
+  setEditingId,  // Modificat din setEditingIndex
   editFood,
   setEditFood,
   onEditSave,
@@ -17,6 +16,7 @@ const FoodTable = ({
   handleMarkAvailability
 }) => {
   const today = new Date().toISOString().split('T')[0];
+  
   const preventDateTyping = (e) => {
     if (e.key !== 'Tab' && e.key !== 'Enter') {
       e.preventDefault();
@@ -31,12 +31,9 @@ const FoodTable = ({
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     return diffDays <= 3 && diffDays >= 0;
   };
+
   const handleCancel = () => {
-    if (isAvailableTable) {
-      setUnavailableEditingIndex(null);
-    } else {
-      setAvailableEditingIndex(null);
-    }
+    setEditingId(null);
     setEditFood({ name: '', expirationDate: '', categories: [] });
   };
 
@@ -51,9 +48,9 @@ const FoodTable = ({
         </tr>
       </thead>
       <tbody>
-        {foods.map((food, index) => (
-          <tr key={index}>
-            {editingIndex === index ? (
+        {foods.map((food) => (
+          <tr key={food.id}> 
+            {editingId === food.id ? (  
               <>
                 <td style={{ border: '1px solid #ddd', padding: '8px' }}>
                   <input
@@ -82,7 +79,7 @@ const FoodTable = ({
                 </td>
                 <td style={{ border: '1px solid #ddd', padding: '8px' }}>
                   <button 
-                    onClick={() => onEditSave(index)}
+                    onClick={() => onEditSave(food.id)}  
                     style={{ marginRight: '5px', padding: '4px 8px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                   >
                     Salvează
@@ -102,13 +99,13 @@ const FoodTable = ({
                 <td style={{ border: '1px solid #ddd', padding: '8px' }}>{food.categories.join(', ')}</td>
                 <td style={{ border: '1px solid #ddd', padding: '8px' }}>
                   <button 
-                    onClick={() => onEditClick(index, food)}
+                    onClick={() => onEditClick(food.id, food)}  
                     style={{ marginRight: '5px', padding: '4px 8px', backgroundColor: '#2196F3', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                   >
                     Editează
                   </button>
                   <button 
-                    onClick={() => onDelete(index)}
+                    onClick={() => onDelete(food.id)} 
                     style={{ marginRight: '5px', padding: '4px 8px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                   >
                     Șterge
@@ -116,7 +113,7 @@ const FoodTable = ({
                   {isAvailableTable ? (
                     isNearExpiration(food.expirationDate) && (
                       <button 
-                        onClick={() => handleMarkAvailability(index, true)}
+                        onClick={() => handleMarkAvailability(food.id, true)} 
                         style={{ padding: '4px 8px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                       >
                         Marchează disponibil
@@ -124,12 +121,12 @@ const FoodTable = ({
                     )
                   ) : (
                     <button 
-                      onClick={() => handleMarkAvailability(index, false)}
+                      onClick={() => handleMarkAvailability(food.id, false)}  
                       style={{ padding: '4px 8px', backgroundColor: '#FF9800', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                     >
                       Marchează indisponibil
                     </button>
-                     )}
+                  )}
                 </td>
               </>
             )}

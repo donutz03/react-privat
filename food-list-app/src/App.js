@@ -18,8 +18,8 @@ function App() {
   const [expirationDate, setExpirationDate] = useState('');
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [availableCategories, setAvailableCategories] = useState([]);
-  const [unavailableEditingIndex, setUnavailableEditingIndex] = useState(null);
-  const[availableEditingIndex, setAvailableEditingIndex]=useState(null);
+  const [editingFoodId, setEditingFoodId] = useState(null);
+  const[availableEditingId, setAvailableEditingId]=useState(null);
   const [editFood, setEditFood] = useState({ 
     name: '', 
     expirationDate: '', 
@@ -81,20 +81,6 @@ function App() {
     }
   };
 
-  const handleMarkAvailability = (index, makeAvailable = true) => {
-    fetch(`http://localhost:5000/foods/${currentUser}/toggle-availability/${index}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ makeAvailable })
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        setPersonalFoods(data.available);
-        setSharedFoods(data.unavailable);
-      })
-      .catch((err) => console.error('Eroare la modificarea disponibilității:', err));
-  };
-
   const handleCategoryChange = (category) => {
     setSelectedCategories(prev => {
       if (prev.includes(category)) {
@@ -128,9 +114,6 @@ function App() {
   };
 
   
-
-
-  // Rest of your existing functions, modified to include user information
   const addFood = () => {
     if (!newFood || !expirationDate || selectedCategories.length === 0) {
       alert('Vă rugăm completați toate câmpurile și selectați cel puțin o categorie!');
@@ -148,20 +131,15 @@ function App() {
     })
       .then((res) => res.json())
       .then((data) => {
-        const sanitizedData = data.map(food => ({
-          ...food,
-          categories: Array.isArray(food.categories) ? food.categories : []
-        }));
-        setPersonalFoods(sanitizedData);
+        setPersonalFoods(data);
         setNewFood('');
         setExpirationDate('');
         setSelectedCategories([]);
       })
       .catch((err) => console.error('Eroare la adăugare:', err));
   };
-
-  const deleteFood = (index) => {
-    fetch(`http://localhost:5000/foods/${currentUser}/${index}`, {
+  const deleteFood = (foodId) => {  // Modificat din index
+    fetch(`http://localhost:5000/foods/${currentUser}/${foodId}`, {
       method: 'DELETE',
     })
       .then((res) => res.json())
@@ -169,13 +147,13 @@ function App() {
       .catch((err) => console.error('Eroare la ștergere:', err));
   };
 
-  const editFoodItem = (index) => {
+  const editFoodItem = (foodId) => {  // Modificat din index
     if (!editFood.name || !editFood.expirationDate || editFood.categories.length === 0) {
       alert('Vă rugăm completați toate câmpurile și selectați cel puțin o categorie!');
       return;
     }
 
-    fetch(`http://localhost:5000/foods/${currentUser}/${index}`, {
+    fetch(`http://localhost:5000/foods/${currentUser}/${foodId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(editFood),
@@ -183,28 +161,28 @@ function App() {
       .then((res) => res.json())
       .then((data) => {
         setPersonalFoods(data);
-        setUnavailableEditingIndex(null);
+        setEditingFoodId(null);
         setEditFood({ name: '', expirationDate: '', categories: [] });
       })
       .catch((err) => console.error('Eroare la editare:', err));
   };
 
-  const deleteUnavailableFood = (index) => {
-    fetch(`http://localhost:5000/foods/unavailable/${currentUser}/${index}`, {
+  const deleteUnavailableFood = (foodId) => {  // Modificat din index
+    fetch(`http://localhost:5000/foods/unavailable/${currentUser}/${foodId}`, {
       method: 'DELETE',
     })
       .then((res) => res.json())
       .then((data) => setSharedFoods(data))
       .catch((err) => console.error('Eroare la ștergere:', err));
   };
-  
-  const editUnavailableFoodItem = (index) => {
+
+  const editUnavailableFoodItem = (foodId) => {  // Modificat din index
     if (!editFood.name || !editFood.expirationDate || editFood.categories.length === 0) {
       alert('Vă rugăm completați toate câmpurile și selectați cel puțin o categorie!');
       return;
     }
-  
-    fetch(`http://localhost:5000/foods/unavailable/${currentUser}/${index}`, {
+
+    fetch(`http://localhost:5000/foods/unavailable/${currentUser}/${foodId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(editFood),
@@ -212,12 +190,25 @@ function App() {
       .then((res) => res.json())
       .then((data) => {
         setSharedFoods(data);
-        setAvailableEditingIndex(null);  // Corectare aici - folosim indexul corect
+        setAvailableEditingId(null);
         setEditFood({ name: '', expirationDate: '', categories: [] });
       })
       .catch((err) => console.error('Eroare la editare:', err));
   };
-  
+
+  const handleMarkAvailability = (foodId, makeAvailable = true) => {  // Modificat din index
+    fetch(`http://localhost:5000/foods/${currentUser}/toggle-availability/${foodId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ makeAvailable })
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setPersonalFoods(data.available);
+        setSharedFoods(data.unavailable);
+      })
+      .catch((err) => console.error('Eroare la modificarea disponibilității:', err));
+  };
 
  
 
@@ -418,15 +409,15 @@ function App() {
     foods={personalFoods} 
     isAvailableTable={true}
     onDelete={deleteFood}
-    editingIndex={unavailableEditingIndex}
-    setUnavailableEditingIndex={setUnavailableEditingIndex}
-    setAvailableEditingIndex={setAvailableEditingIndex} // Adăugăm și celălalt setter
+    editingIndex={editingFoodId}
+    setUnavailableEditingIndex={setEditingFoodId}
+    setAvailableEditingIndex={setAvailableEditingId} // Adăugăm și celălalt setter
     editFood={editFood}
     setEditFood={setEditFood}
     onEditSave={editFoodItem}
     onEditClick={(index, food) => {
-      setUnavailableEditingIndex(index);
-      setAvailableEditingIndex(null); // Resetăm celălalt index
+      setEditingFoodId(index);
+      setAvailableEditingId(null); // Resetăm celălalt index
       setEditFood({
         name: food.name,
         expirationDate: food.expirationDate,
@@ -442,28 +433,27 @@ function App() {
 <div style={{ marginTop: '40px' }}>
   <h2>Produse Marcate ca Disponibile</h2>
   <FoodTable 
-    availableCategories={availableCategories}
-    foods={sharedFoods} 
-    isAvailableTable={false}
-    onDelete={deleteUnavailableFood}
-    editingIndex={availableEditingIndex}
-    setUnavailableEditingIndex={setUnavailableEditingIndex}
-    setAvailableEditingIndex={setAvailableEditingIndex} // Adăugăm ambii setteri
-    editFood={editFood}
-    setEditFood={setEditFood}
-    onEditSave={editUnavailableFoodItem}
-    onEditClick={(index, food) => {
-      setAvailableEditingIndex(index);
-      setUnavailableEditingIndex(null); // Resetăm celălalt index
-      setEditFood({
-        name: food.name,
-        expirationDate: food.expirationDate,
-        categories: food.categories
-      });
-    }}
-    handleEditCategoryChange={handleEditCategoryChange}
-    handleMarkAvailability={handleMarkAvailability}
-  />
+      availableCategories={availableCategories}
+      foods={sharedFoods} 
+      isAvailableTable={false}
+      onDelete={deleteUnavailableFood}
+      editingId={availableEditingId}
+      setEditingId={setAvailableEditingId}
+      editFood={editFood}
+      setEditFood={setEditFood}
+      onEditSave={editUnavailableFoodItem}
+      onEditClick={(foodId, food) => {
+        setAvailableEditingId(foodId);
+        setEditingFoodId(null);
+        setEditFood({
+          name: food.name,
+          expirationDate: food.expirationDate,
+          categories: food.categories
+        });
+      }}
+      handleEditCategoryChange={handleEditCategoryChange}
+      handleMarkAvailability={handleMarkAvailability}
+    />
 </div>
 <div style={{ marginTop: '40px' }}>
         <ExpiredProductsTable foods={expiredFoods} currentUser={currentUser} setExpiredFoods={setExpiredFoods}/>
