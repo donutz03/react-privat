@@ -75,3 +75,16 @@ CREATE TABLE shared_list_access (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_id, viewer_id)
 );
+
+ALTER TABLE foods ADD COLUMN claim_status VARCHAR(50) DEFAULT 'unclaimed';
+
+-- Create a table to track claimed products
+CREATE TABLE claimed_products (
+    id SERIAL PRIMARY KEY,
+    food_id INTEGER REFERENCES foods(id),
+    claimed_by INTEGER REFERENCES users(id),
+    original_owner INTEGER REFERENCES users(id),
+    claimed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE foods ADD COLUMN is_claimed_product BOOLEAN DEFAULT false;
