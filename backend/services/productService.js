@@ -16,7 +16,7 @@ const moveExpiredProducts = async (username) => {
     const userId = userResult.rows[0].id;
     const currentDate = new Date().toISOString().split('T')[0];
 
-    // Marcăm produsele expirate
+    // Marcăm produsele expirate folosind valori booleene explicite
     await db.query(
       `UPDATE foods 
        SET is_expired = true 
@@ -34,19 +34,20 @@ const moveExpiredProducts = async (username) => {
       LEFT JOIN food_category_relations fcr ON f.id = fcr.food_id
       LEFT JOIN food_categories fc ON fcr.category_id = fc.id
       WHERE f.user_id = $1
-      GROUP BY f.id`;
+    `;
 
     const [available, unavailable, expired] = await Promise.all([
       // Produse disponibile (neexpirate și nemarcate ca disponibile)
-      db.query(foodsQuery + ' AND NOT is_available AND NOT is_expired', [userId]),
+      db.query(foodsQuery + ' AND is_available = false AND is_expired = false GROUP BY f.id', [userId]),
       // Produse marcate ca disponibile și neexpirate
-      db.query(foodsQuery + ' AND is_available AND NOT is_expired', [userId]),
+      db.query(foodsQuery + ' AND is_available = true AND is_expired = false GROUP BY f.id', [userId]),
       // Produse expirate
-      db.query(foodsQuery + ' AND is_expired', [userId])
+      db.query(foodsQuery + ' AND is_expired = true GROUP BY f.id', [userId])
     ]);
 
     // Formatăm rezultatele pentru a păstra compatibilitatea cu codul existent
     const formatResults = (rows) => rows.map(row => ({
+      id: row.id,
       name: row.name,
       expirationDate: row.expiration_date.toISOString().split('T')[0],
       categories: row.categories.filter(c => c !== null),
