@@ -129,20 +129,21 @@ function App() {
   
   const addFood = () => {
     if (!newFood || !expirationDate || selectedCategories.length === 0) {
-      alert('Vă rugăm completați toate câmpurile și selectați cel puțin o categorie!');
+      alert('Vă rugăm completați toate câmpurile obligatorii!');
       return;
     }
   
-    const formData = {
-      name: newFood,
-      expirationDate: expirationDate, // Trimitem data exact cum este selectată
-      categories: selectedCategories
-    };
+    const formData = new FormData();
+    formData.append('name', newFood);
+    formData.append('expirationDate', expirationDate);
+    formData.append('categories', JSON.stringify(selectedCategories));
+    if (selectedImage) {
+      formData.append('image', selectedImage);
+    }
   
     fetch(`http://localhost:5000/foods/${currentUser}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData),
+      body: formData
     })
     .then((res) => res.json())
     .then((data) => {
@@ -150,6 +151,7 @@ function App() {
       setNewFood('');
       setExpirationDate('');
       setSelectedCategories([]);
+      setSelectedImage(null);
     })
     .catch((err) => console.error('Eroare la adăugare:', err));
   };
