@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
 const { isNearExpiration } = require('../utils/dateHelpers');
-
 const getFoodsWithCategories = async (query, params) => {
   const result = await db.query(`
     SELECT f.*, 
@@ -23,8 +22,6 @@ const getFoodsWithCategories = async (query, params) => {
     isNearExpiration: isNearExpiration(new Date(food.formatted_date))
   }));
 };
-
-// Update the get personal products endpoint in foods.js
 router.get('/:username', async (req, res) => {
   const { username } = req.params;
   
@@ -36,12 +33,10 @@ router.get('/:username', async (req, res) => {
 
     const userId = userResult.rows[0].id;
 
-    // Modified query to exclude claimed products from personal list
     const foods = await getFoodsWithCategories(
       `WHERE f.user_id = $1 
        AND is_available = false 
-       AND is_expired = false
-       AND (claim_status = 'unclaimed' OR (claim_status = 'claimed' AND is_claimed_product = true))`,
+       AND is_expired = false`,
       [userId]
     );
     
@@ -64,12 +59,10 @@ router.get('/unavailable/:username', async (req, res) => {
 
     const userId = userResult.rows[0].id;
 
-    // Modified query to exclude claimed products from unavailable list
     const foods = await getFoodsWithCategories(
       `WHERE f.user_id = $1 
        AND is_available = true 
-       AND is_expired = false
-       AND claim_status = 'unclaimed'`,
+       AND is_expired = false`,
       [userId]
     );
     
