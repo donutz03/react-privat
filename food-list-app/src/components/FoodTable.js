@@ -1,5 +1,5 @@
 import React from 'react';
-import CategoryCheckboxes from './components/CategoryCheckboxes';
+import CategoryCheckboxes from './CategoryCheckboxes';
 
 const FoodTable = ({ 
   foods,
