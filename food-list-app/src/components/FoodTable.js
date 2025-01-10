@@ -40,14 +40,14 @@ const FoodTable = ({
   };
 
   return (
-    <table className="w-full border-collapse mt-5">
+    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
       <thead>
         <tr>
-          <th className="border border-gray-300 p-2">Imagine</th>
-          <th className="border border-gray-300 p-2">Aliment</th>
-          <th className="border border-gray-300 p-2">Data Expirare</th>
-          <th className="border border-gray-300 p-2">Categorii</th>
-          <th className="border border-gray-300 p-2">Acțiuni</th>
+          <th style={{ border: '1px solid #ddd', padding: '8px', width: '120px' }}>Imagine</th>
+          <th style={{ border: '1px solid #ddd', padding: '8px' }}>Aliment</th>
+          <th style={{ border: '1px solid #ddd', padding: '8px' }}>Data Expirare</th>
+          <th style={{ border: '1px solid #ddd', padding: '8px' }}>Categorii</th>
+          <th style={{ border: '1px solid #ddd', padding: '8px' }}>Acțiuni</th>
         </tr>
       </thead>
       <tbody>
@@ -55,63 +55,93 @@ const FoodTable = ({
           <tr key={food.id}> 
             {editingId === food.id ? (
               <>
-                <td className="border border-gray-300 p-2 w-32">
-                  <div className="relative w-full h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-gray-400">
+                <td style={{ border: '1px solid #ddd', padding: '8px', width: '120px' }}>
+                  <div style={{ 
+                    position: 'relative',
+                    width: '100%',
+                    height: '120px',
+                    border: '2px dashed #ddd',
+                    borderRadius: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer'
+                  }}>
                     <input
                       type="file"
                       accept="image/*"
                       onChange={(e) => handleImageChange(e.target.files[0])}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        opacity: 0,
+                        cursor: 'pointer'
+                      }}
                     />
                     {editFood.image || food.imageUrl ? (
                       <img
                         src={editFood.image ? URL.createObjectURL(editFood.image) : `http://localhost:5000${food.imageUrl}`}
                         alt="Food preview"
-                        className="w-full h-full object-cover rounded-lg"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          borderRadius: '4px'
+                        }}
                       />
                     ) : (
-                      <div className="flex flex-col items-center">
-                        <Image className="w-8 h-8 text-gray-400" />
-                        <span className="mt-2 text-sm text-gray-500">Click pentru imagine</span>
+                      <div style={{ textAlign: 'center' }}>
+                        <Image style={{ width: '24px', height: '24px', color: '#999' }} />
+                        <span style={{ 
+                          display: 'block', 
+                          marginTop: '8px',
+                          fontSize: '12px',
+                          color: '#666'
+                        }}>
+                          Click pentru imagine
+                        </span>
                       </div>
                     )}
                   </div>
                 </td>
-                <td className="border border-gray-300 p-2">
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>
                   <input
                     type="text"
                     value={editFood.name}
                     onChange={(e) => setEditFood(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full p-1 border border-gray-300 rounded"
+                    style={{ width: '100%', padding: '4px' }}
                   />
                 </td>
-                <td className="border border-gray-300 p-2">
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>
                   <input
                     type="date"
                     value={editFood.expirationDate}
                     onKeyDown={preventDateTyping}
                     min={today}
                     onChange={(e) => setEditFood(prev => ({ ...prev, expirationDate: e.target.value }))}
-                    className="w-full p-1 border border-gray-300 rounded"
+                    style={{ width: '100%', padding: '4px' }}
                   />
                 </td>
-                <td className="border border-gray-300 p-2">
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>
                   <CategoryCheckboxes
                     selectedCategories={editFood.categories}
                     onChange={handleEditCategoryChange}
                     availableCategories={availableCategories}
                   />
                 </td>
-                <td className="border border-gray-300 p-2">
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>
                   <button 
                     onClick={() => onEditSave(food.id)}  
-                    className="mr-2 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+                    style={{ marginRight: '5px', padding: '4px 8px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                   >
                     Salvează
                   </button>
                   <button 
                     onClick={handleCancel}
-                    className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                    style={{ padding: '4px 8px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                   >
                     Anulează
                   </button>
@@ -119,32 +149,45 @@ const FoodTable = ({
               </>
             ) : (
               <>
-                <td className="border border-gray-300 p-2 w-32">
+                <td style={{ border: '1px solid #ddd', padding: '8px', width: '120px' }}>
                   {food.imageUrl ? (
                     <img
                       src={`http://localhost:5000${food.imageUrl}`}
                       alt={food.name}
-                      className="w-full h-32 object-cover rounded-lg"
+                      style={{
+                        width: '100%',
+                        height: '120px',
+                        objectFit: 'cover',
+                        borderRadius: '4px'
+                      }}
                     />
                   ) : (
-                    <div className="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center">
-                      <span className="text-gray-400">Fără imagine</span>
+                    <div style={{
+                      width: '100%',
+                      height: '120px',
+                      backgroundColor: '#f5f5f5',
+                      borderRadius: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <span style={{ color: '#999' }}>Fără imagine</span>
                     </div>
                   )}
                 </td>
-                <td className="border border-gray-300 p-2">{food.name}</td>
-                <td className="border border-gray-300 p-2">{food.expirationDate}</td>
-                <td className="border border-gray-300 p-2">{food.categories.join(', ')}</td>
-                <td className="border border-gray-300 p-2">
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{food.name}</td>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{food.expirationDate}</td>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{food.categories.join(', ')}</td>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>
                   <button 
                     onClick={() => onEditClick(food.id, food)}  
-                    className="mr-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    style={{ marginRight: '5px', padding: '4px 8px', backgroundColor: '#2196F3', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                   >
                     Editează
                   </button>
                   <button 
                     onClick={() => onDelete(food.id)} 
-                    className="mr-2 px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                    style={{ marginRight: '5px', padding: '4px 8px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                   >
                     Șterge
                   </button>
@@ -152,7 +195,7 @@ const FoodTable = ({
                     isNearExpiration(food.expirationDate) && (
                       <button 
                         onClick={() => handleMarkAvailability(food.id, true)} 
-                        className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+                        style={{ padding: '4px 8px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                       >
                         Marchează disponibil
                       </button>
@@ -160,7 +203,7 @@ const FoodTable = ({
                   ) : (
                     <button 
                       onClick={() => handleMarkAvailability(food.id, false)}  
-                      className="px-3 py-1 bg-orange-500 text-white rounded hover:bg-orange-600"
+                      style={{ padding: '4px 8px', backgroundColor: '#FF9800', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                     >
                       Marchează indisponibil
                     </button>
