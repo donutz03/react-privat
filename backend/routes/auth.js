@@ -2,11 +2,12 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database/db'); // importăm conexiunea la bază de date
 const { moveExpiredProducts } = require('../services/productService');
+// auth.js
 
 router.post('/register', async (req, res) => {
-  const { username, password } = req.body;
+  const { username, password, phone, address } = req.body;
   
-  if (!username || !password) {
+  if (!username || !password || !phone || !address) {
     return res.status(400).json({ message: 'Toate câmpurile sunt obligatorii!' });
   }
 
@@ -21,10 +22,10 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'Utilizatorul există deja!' });
     }
 
-    // Inserăm noul utilizator
+    // Inserăm noul utilizator cu telefon și adresă
     await db.query(
-      'INSERT INTO users (username, password) VALUES ($1, $2)',
-      [username, password]
+      'INSERT INTO users (username, password, phone, address) VALUES ($1, $2, $3, $4)',
+      [username, password, phone, address]
     );
 
     res.status(201).json({ message: 'Cont creat cu succes!' });
@@ -42,9 +43,9 @@ router.post('/login', async (req, res) => {
   }
 
   try {
-    // Verificăm credențialele
+    // Verificăm credențialele și includem și informațiile de contact
     const result = await db.query(
-      'SELECT * FROM users WHERE username = $1 AND password = $2',
+      'SELECT id, username, phone, address FROM users WHERE username = $1 AND password = $2',
       [username, password]
     );
 
@@ -53,11 +54,15 @@ router.post('/login', async (req, res) => {
     }
 
     // Obținem produsele expirate
-    // Notă: va trebui să modificăm și moveExpiredProducts pentru PostgreSQL
     const products = await moveExpiredProducts(username);
 
     res.json({ 
       message: 'Autentificare reușită!',
+      user: {
+        username: result.rows[0].username,
+        phone: result.rows[0].phone,
+        address: result.rows[0].address
+      },
       products
     });
   } catch (error) {

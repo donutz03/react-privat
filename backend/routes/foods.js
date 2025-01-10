@@ -285,4 +285,82 @@ router.put('/:username/:id', async (req, res) => {
   }
 });
 
+// Add this to routes/foods.js
+
+// POST /foods/:ownerUsername/claim/:foodId - Claim a product
+router.post('/:ownerUsername/claim/:foodId', async (req, res) => {
+  const { ownerUsername, foodId } = req.params;
+  const { claimedBy } = req.body; // username of the person claiming
+
+  try {
+      await db.query('BEGIN');
+
+      // Get user IDs
+      const [ownerResult, claimerResult] = await Promise.all([
+          db.query('SELECT id, phone, address FROM users WHERE username = $1', [ownerUsername]),
+          db.query('SELECT id FROM users WHERE username = $1', [claimedBy])
+      ]);
+
+      if (ownerResult.rows.length === 0 || claimerResult.rows.length === 0) {
+          await db.query('ROLLBACK');
+          return res.status(404).json({ message: 'User not found' });
+      }
+
+      const ownerId = ownerResult.rows[0].id;
+      const claimerId = claimerResult.rows[0].id;
+      const ownerContact = {
+          phone: ownerResult.rows[0].phone,
+          address: ownerResult.rows[0].address
+      };
+
+      // Check if food exists and is available
+      const foodResult = await db.query(
+          'SELECT * FROM foods WHERE id = $1 AND user_id = $2 AND is_available = true AND claim_status = $3',
+          [foodId, ownerId, 'unclaimed']
+      );
+
+      if (foodResult.rows.length === 0) {
+          await db.query('ROLLBACK');
+          return res.status(404).json({ message: 'Product not found or not available' });
+      }
+
+      // Update food status
+      await db.query(
+          'UPDATE foods SET claim_status = $1 WHERE id = $2',
+          ['claimed', foodId]
+      );
+
+      // Create claimed product record
+      await db.query(
+          'INSERT INTO claimed_products (food_id, claimed_by, original_owner) VALUES ($1, $2, $3)',
+          [foodId, claimerId, ownerId]
+      );
+
+      await db.query('COMMIT');
+
+      // Return updated data
+      const [claimedFoods, ownerFoods] = await Promise.all([
+          getFoodsWithCategories(
+              'WHERE f.user_id = $1 AND NOT f.is_expired',
+              [claimerId]
+          ),
+          getFoodsWithCategories(
+              'WHERE f.user_id = $1 AND f.is_available = true AND NOT f.is_expired',
+              [ownerId]
+          )
+      ]);
+
+      res.json({
+          claimedFoods,
+          ownerFoods,
+          ownerContact
+      });
+
+  } catch (error) {
+      await db.query('ROLLBACK');
+      console.error('Error claiming product:', error);
+      res.status(500).json({ message: 'Error claiming product' });
+  }
+});
+
 module.exports = router;
