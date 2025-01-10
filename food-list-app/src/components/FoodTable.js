@@ -83,8 +83,7 @@ const FoodTable = ({
                     />
                     {editFood.image || food.imageUrl ? (
                       <img
-                        src={editFood.image ? URL.createObjectURL(editFood.image) : `http://localhost:5000${food.imageUrl}`}
-                        alt="Food preview"
+                      src={editFood.image ? URL.createObjectURL(editFood.image) : `http://localhost:5000${food.imageUrl}`}                        alt="Food preview"
                         style={{
                           width: '100%',
                           height: '100%',
