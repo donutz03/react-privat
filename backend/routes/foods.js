@@ -287,7 +287,6 @@ router.put('/:username/:id', async (req, res) => {
 
 // Add this to routes/foods.js
 
-// POST /foods/:ownerUsername/claim/:foodId - Claim a product
 router.post('/:ownerUsername/claim/:foodId', async (req, res) => {
   const { ownerUsername, foodId } = req.params;
   const { claimedBy } = req.body; // username of the person claiming
@@ -313,7 +312,6 @@ router.post('/:ownerUsername/claim/:foodId', async (req, res) => {
           address: ownerResult.rows[0].address
       };
 
-      // Check if food exists and is available
       const foodResult = await db.query(
           'SELECT * FROM foods WHERE id = $1 AND user_id = $2 AND is_available = true AND claim_status = $3',
           [foodId, ownerId, 'unclaimed']
@@ -360,6 +358,31 @@ router.post('/:ownerUsername/claim/:foodId', async (req, res) => {
       await db.query('ROLLBACK');
       console.error('Error claiming product:', error);
       res.status(500).json({ message: 'Error claiming product' });
+  }
+});
+
+router.get('/:username/claimed/:foodId', async (req, res) => {
+  const { username, foodId } = req.params;
+
+  try {
+    // Modificăm query-ul pentru a obține detaliile celui mai recent proprietar care a făcut produsul disponibil
+    const ownerDetailsQuery = `
+      SELECT u.phone, u.address
+      FROM foods f
+      JOIN users u ON f.user_id = u.id  // Luăm detaliile utilizatorului care a făcut ultima dată produsul disponibil
+      WHERE f.id = $1
+    `;
+
+    const result = await db.query(ownerDetailsQuery, [foodId]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Detaliile produsului nu au fost găsite' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching claimed product details:', error);
+    res.status(500).json({ message: 'Eroare la obținerea detaliilor produsului' });
   }
 });
 
