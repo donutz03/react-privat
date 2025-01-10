@@ -332,8 +332,7 @@ router.post('/:username/toggle-availability/:id', async (req, res) => {
   }
 });
 
-// PUT /foods/:username/:id - Modifică un produs
-router.put('/:username/:id', async (req, res) => {
+router.put('/:username/:id', upload.single('image'), async (req, res) => {
   const { username, id } = req.params;
   const { name, expirationDate, categories } = req.body;
 
@@ -353,17 +352,25 @@ router.put('/:username/:id', async (req, res) => {
     }
     const userId = userResult.rows[0].id;
 
-    // Actualizăm produsul
-    await db.query(
-      'UPDATE foods SET name = $1, expiration_date = $2 WHERE id = $3 AND user_id = $4',
-      [name, expirationDate, id, userId]
-    );
+    // Actualizăm produsul, inclusiv imaginea dacă există
+    if (req.file) {
+      await db.query(
+        'UPDATE foods SET name = $1, expiration_date = $2, image_data = $3, image_type = $4 WHERE id = $5 AND user_id = $6',
+        [name, expirationDate, req.file.buffer, req.file.mimetype, id, userId]
+      );
+    } else {
+      await db.query(
+        'UPDATE foods SET name = $1, expiration_date = $2 WHERE id = $3 AND user_id = $4',
+        [name, expirationDate, id, userId]
+      );
+    }
 
     // Ștergem relațiile vechi cu categoriile
     await db.query('DELETE FROM food_category_relations WHERE food_id = $1', [id]);
 
     // Adăugăm noile relații cu categoriile
-    for (const categoryName of categories) {
+    const categoriesArray = Array.isArray(categories) ? categories : JSON.parse(categories);
+    for (const categoryName of categoriesArray) {
       const categoryResult = await db.query(
         'SELECT id FROM food_categories WHERE name = $1',
         [categoryName]
