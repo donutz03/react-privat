@@ -4,8 +4,7 @@ const SharedProducts = ({ currentUser, setShowSharedProducts }) => {
   const [sharedProducts, setSharedProducts] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [ownerContact, setOwnerContact] = useState(null);
-  const [claimedProductId, setClaimedProductId] = useState(null);
+  const [expandedProductContacts, setExpandedProductContacts] = useState({});
 
   useEffect(() => {
     fetchSharedProducts();
@@ -23,9 +22,32 @@ const SharedProducts = ({ currentUser, setShowSharedProducts }) => {
     }
   };
 
+  const toggleProductContact = async (friendUsername, productId) => {
+    try {
+      // If contact details aren't loaded, fetch them
+      if (!expandedProductContacts[`${friendUsername}-${productId}`]) {
+        const response = await fetch(`http://localhost:5000/foods/${friendUsername}/claimed/${productId}`);
+        const contactDetails = await response.json();
+        
+        setExpandedProductContacts(prev => ({
+          ...prev, 
+          [`${friendUsername}-${productId}`]: contactDetails
+        }));
+      } else {
+        // If already loaded, toggle visibility by removing
+        const newContacts = {...expandedProductContacts};
+        delete newContacts[`${friendUsername}-${productId}`];
+        setExpandedProductContacts(newContacts);
+      }
+    } catch (err) {
+      console.error('Eroare la încărcarea detaliilor de contact:', err);
+      setError('Nu s-au putut încărca detaliile de contact');
+    }
+  };
+
   const handleClaimProduct = async (friendUsername, productId) => {
     try {
-      const response = await fetch(`http://localhost:5000/foods/${friendUsername}/claim/${productId}`, {
+      const response = await fetch(`http://localhost:5000/friends/${friendUsername}/claim/${productId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -33,22 +55,24 @@ const SharedProducts = ({ currentUser, setShowSharedProducts }) => {
         body: JSON.stringify({ claimedBy: currentUser })
       });
 
+      const data = await response.json();
+      
       if (response.ok) {
-        const data = await response.json();
-        setOwnerContact(data.ownerContact);
-        setClaimedProductId(productId);
+        // Reload shared products and show contact details
+        fetchSharedProducts();
         
-        // Actualizăm lista locală de produse eliminând produsul revendicat
-        const updatedProducts = { ...sharedProducts };
-        updatedProducts[friendUsername] = updatedProducts[friendUsername].filter(
-          product => product.id !== productId
-        );
-        setSharedProducts(updatedProducts);
+        // Show contact details if available
+        if (data.ownerContact) {
+          setExpandedProductContacts(prev => ({
+            ...prev, 
+            [`${friendUsername}-${productId}`]: data.ownerContact
+          }));
+        }
       } else {
-        const errorData = await response.json();
-        setError(errorData.message || 'Eroare la revendicarea produsului');
+        setError(data.message || 'Eroare la revendicarea produsului');
       }
     } catch (err) {
+      console.error('Eroare la revendicarea produsului:', err);
       setError('Eroare la revendicarea produsului');
     }
   };
@@ -98,21 +122,6 @@ const SharedProducts = ({ currentUser, setShowSharedProducts }) => {
           marginBottom: '20px'
         }}>
           {error}
-        </div>
-      )}
-
-      {ownerContact && (
-        <div style={{ 
-          padding: '1rem',
-          backgroundColor: '#e8f5e9',
-          color: '#2e7d32',
-          borderRadius: '4px',
-          marginBottom: '20px'
-        }}>
-          <h4 style={{ marginBottom: '8px' }}>Produs revendicat cu succes!</h4>
-          <p>Contactează proprietarul pentru ridicare:</p>
-          <p>Telefon: {ownerContact.phone}</p>
-          <p>Adresă: {ownerContact.address}</p>
         </div>
       )}
 
@@ -185,22 +194,38 @@ const SharedProducts = ({ currentUser, setShowSharedProducts }) => {
                         </span>
                       ))}
                     </div>
-                    <button
-                      onClick={() => handleClaimProduct(friend, product.id)}
-                      disabled={claimedProductId === product.id}
-                      style={{
-                        width: '100%',
-                        padding: '8px',
-                        backgroundColor: claimedProductId === product.id ? '#ccc' : '#4CAF50',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: claimedProductId === product.id ? 'not-allowed' : 'pointer',
-                        transition: 'background-color 0.2s'
-                      }}
-                    >
-                      {claimedProductId === product.id ? 'Revendicat' : 'Revendică Produsul'}
-                    </button>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button
+                        onClick={() => handleClaimProduct(friend, product.id)}
+                        style={{
+                          flex: 1,
+                          padding: '8px',
+                          backgroundColor: '#4CAF50',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          transition: 'background-color 0.2s'
+                        }}
+                      >
+                        Revendică Produsul
+                      </button>
+                      {expandedProductContacts[`${friend}-${product.id}`] && (
+                        <div 
+                          style={{
+                            backgroundColor: '#e8f5e9',
+                            padding: '10px',
+                            borderRadius: '4px',
+                            marginTop: '10px',
+                            width: '100%'
+                          }}
+                        >
+                          <h4>Detalii Contact</h4>
+                          <p>Telefon: {expandedProductContacts[`${friend}-${product.id}`].phone}</p>
+                          <p>Adresă: {expandedProductContacts[`${friend}-${product.id}`].address}</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
