@@ -634,8 +634,7 @@ router.get('/:username/shared-products', async (req, res) => {
     res.status(500).json({ message: 'Eroare la obținerea produselor partajate' });
   }
 });
-
-// Update the claim endpoint in foods.js
+// In friends.js
 router.post('/:ownerUsername/claim/:foodId', async (req, res) => {
   const { ownerUsername, foodId } = req.params;
   const { claimedBy } = req.body;
@@ -643,27 +642,9 @@ router.post('/:ownerUsername/claim/:foodId', async (req, res) => {
   try {
     await db.query('BEGIN');
 
-    // Check if the product has already been claimed
-    const claimCheck = await db.query(
-      'SELECT claim_status FROM foods WHERE id = $1',
-      [foodId]
-    );
-
-    if (claimCheck.rows.length === 0) {
-      await db.query('ROLLBACK');
-      return res.status(404).json({ message: 'Product not found' });
-    }
-
-    if (claimCheck.rows[0].claim_status === 'claimed') {
-      await db.query('ROLLBACK');
-      return res.status(409).json({ 
-        message: 'This product has already been claimed by someone else' 
-      });
-    }
-
-    // Get user IDs and contact information
+    // Get user IDs
     const [ownerResult, claimerResult] = await Promise.all([
-      db.query('SELECT id, phone, address FROM users WHERE username = $1', [ownerUsername]),
+      db.query('SELECT id FROM users WHERE username = $1', [ownerUsername]),
       db.query('SELECT id FROM users WHERE username = $1', [claimedBy])
     ]);
 
@@ -674,12 +655,8 @@ router.post('/:ownerUsername/claim/:foodId', async (req, res) => {
 
     const ownerId = ownerResult.rows[0].id;
     const claimerId = claimerResult.rows[0].id;
-    const ownerContact = {
-      phone: ownerResult.rows[0].phone,
-      address: ownerResult.rows[0].address
-    };
 
-    // Find the original food item
+    // Get the food item
     const foodResult = await db.query(
       'SELECT * FROM foods WHERE id = $1 AND user_id = $2 AND is_available = true AND is_expired = false',
       [foodId, ownerId]
@@ -692,48 +669,16 @@ router.post('/:ownerUsername/claim/:foodId', async (req, res) => {
 
     const originalFood = foodResult.rows[0];
 
-    // Create a copy for the claimer
-    const newFoodResult = await db.query(
-      `INSERT INTO foods 
-        (user_id, name, expiration_date, is_available, is_expired, claim_status, is_claimed_product) 
-       VALUES 
-        ($1, $2, $3, false, false, 'claimed', true)
-       RETURNING id`,
-      [claimerId, originalFood.name, originalFood.expiration_date]
-    );
-
-    const newFoodId = newFoodResult.rows[0].id;
-
-    // Copy categories
-    const categoriesResult = await db.query(
-      'SELECT category_id FROM food_category_relations WHERE food_id = $1',
-      [foodId]
-    );
-
-    for (const row of categoriesResult.rows) {
-      await db.query(
-        'INSERT INTO food_category_relations (food_id, category_id) VALUES ($1, $2)',
-        [newFoodId, row.category_id]
-      );
-    }
-
-    // Update original food status
+    // Update the ownership and availability
     await db.query(
-      'UPDATE foods SET is_available = false, claim_status = $1 WHERE id = $2',
-      ['claimed', foodId]
-    );
-
-    // Record the claim
-    await db.query(
-      'INSERT INTO claimed_products (food_id, claimed_by, original_owner) VALUES ($1, $2, $3)',
-      [foodId, claimerId, ownerId]
+      'UPDATE foods SET user_id = $1, is_available = false WHERE id = $2',
+      [claimerId, foodId]
     );
 
     await db.query('COMMIT');
 
     res.json({
-      message: 'Product claimed successfully',
-      ownerContact
+      message: 'Product claimed successfully'
     });
 
   } catch (error) {
@@ -742,5 +687,4 @@ router.post('/:ownerUsername/claim/:foodId', async (req, res) => {
     res.status(500).json({ message: 'Error claiming product' });
   }
 });
-
 module.exports = router;

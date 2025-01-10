@@ -38,71 +38,41 @@ const SharedProducts = ({ currentUser, setShowSharedProducts }) => {
     }
   };
 
-  const handleClaimProduct = async (friendUsername, productId) => {
-    if (claimedProducts.has(productId)) {
-      return; // Prevent claiming already claimed products
+const handleClaimProduct = async (friendUsername, productId) => {
+  try {
+    const response = await fetch(`http://localhost:5000/friends/${friendUsername}/claim/${productId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ claimedBy: currentUser })
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to claim product');
     }
 
-    try {
-      const response = await fetch(`http://localhost:5000/friends/${friendUsername}/claim/${productId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ claimedBy: currentUser })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        if (response.status === 409) {
-          setClaimError('This product has already been claimed by someone else');
-          setTimeout(() => setClaimError(''), 3000);
-          // Remove the product from the local state
-          setSharedProducts(prevProducts => {
-            const newProducts = { ...prevProducts };
-            if (newProducts[friendUsername]) {
-              newProducts[friendUsername] = newProducts[friendUsername].filter(p => p.id !== productId);
-              if (newProducts[friendUsername].length === 0) {
-                delete newProducts[friendUsername];
-              }
-            }
-            return newProducts;
-          });
-          return;
+    // Remove the claimed product from the display
+    setSharedProducts(prevProducts => {
+      const newProducts = { ...prevProducts };
+      if (newProducts[friendUsername]) {
+        newProducts[friendUsername] = newProducts[friendUsername].filter(p => p.id !== productId);
+        if (newProducts[friendUsername].length === 0) {
+          delete newProducts[friendUsername];
         }
-        throw new Error(data.message || 'Failed to claim product');
       }
-      
-      // Add to claimed products set
-      setClaimedProducts(prev => new Set([...prev, productId]));
-      
-      // Update contact details if available
-      if (data.ownerContact) {
-        setExpandedProductContacts(prev => ({
-          ...prev,
-          [`${friendUsername}-${productId}`]: data.ownerContact
-        }));
-      }
+      return newProducts;
+    });
 
-      // Remove the claimed product from the display
-      setSharedProducts(prevProducts => {
-        const newProducts = { ...prevProducts };
-        if (newProducts[friendUsername]) {
-          newProducts[friendUsername] = newProducts[friendUsername].filter(p => p.id !== productId);
-          if (newProducts[friendUsername].length === 0) {
-            delete newProducts[friendUsername];
-          }
-        }
-        return newProducts;
-      });
+    // Optionally refresh the products list
+    fetchSharedProducts();
 
-    } catch (err) {
-      console.error('Error claiming product:', err);
-      setError('Error claiming product');
-      setTimeout(() => setError(''), 3000);
-    }
-  };
+  } catch (err) {
+    console.error('Error claiming product:', err);
+    setError('Error claiming product');
+    setTimeout(() => setError(''), 3000);
+  }
+};
 
   if (loading) {
     return (
