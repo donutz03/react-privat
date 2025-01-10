@@ -1,78 +1,92 @@
 const express = require('express');
 const router = express.Router();
-const { readFile, writeFile } = require('../utils/fileHelpers');
-const config = require('../config/config');
+const db = require('../database/db');
 
-router.get('/tags', (req, res) => {
+// GET /friends/tags - Obține toate tag-urile disponibile
+router.get('/tags', async (req, res) => {
   try {
-    const tags = readFile(config.FILES.friendTags);
+    const result = await db.query('SELECT name FROM friend_tags ORDER BY name');
+    const tags = result.rows.map(row => row.name);
     res.json(tags);
   } catch (err) {
     res.status(500).json({ message: 'Eroare la încărcarea etichetelor' });
   }
 });
 
-router.get('/:username', (req, res) => {
+// GET /friends/:username - Obține toți prietenii unui utilizator
+router.get('/:username', async (req, res) => {
   const { username } = req.params;
-  const friendsData = readFile(config.FILES.friends);
   
-  if (!friendsData[username]) {
-    friendsData[username] = {
-      friends: {},
-      groups: [],
-      sharedListAccess: []
-    };
-    writeFile(config.FILES.friends, friendsData);
-  }
-  
-  // Asigură-te că friends este un obiect
-  if (Array.isArray(friendsData[username].friends)) {
-    const convertedFriends = friendsData[username].friends.reduce((acc, friendName) => {
-      acc[friendName] = [];
+  try {
+    // Obținem ID-ul utilizatorului
+    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Utilizator negăsit' });
+    }
+    const userId = userResult.rows[0].id;
+
+    // Obținem prietenii cu tag-urile lor
+    const friendsQuery = `
+      SELECT 
+        u.username as friend_username,
+        array_agg(ft.name) as tags
+      FROM friendships f
+      JOIN users u ON f.friend_id = u.id
+      LEFT JOIN friendship_tags ftags ON f.id = ftags.friendship_id
+      LEFT JOIN friend_tags ft ON ftags.tag_id = ft.id
+      WHERE f.user_id = $1
+      GROUP BY u.username
+    `;
+    const friendsResult = await db.query(friendsQuery, [userId]);
+
+    // Obținem grupurile utilizatorului
+    const groupsQuery = `
+      SELECT 
+        g.name,
+        g.created_by,
+        array_agg(u.username) as members
+      FROM groups g
+      JOIN group_members gm ON g.id = gm.group_id
+      JOIN users u ON gm.user_id = u.id
+      WHERE g.id IN (
+        SELECT group_id FROM group_members WHERE user_id = $1
+      )
+      GROUP BY g.id, g.name, g.created_by
+    `;
+    const groupsResult = await db.query(groupsQuery, [userId]);
+
+    // Obținem lista de acces partajat
+    const accessQuery = `
+      SELECT u.username
+      FROM shared_list_access sla
+      JOIN users u ON sla.viewer_id = u.id
+      WHERE sla.user_id = $1
+    `;
+    const accessResult = await db.query(accessQuery, [userId]);
+
+    // Formatăm rezultatul pentru compatibilitate cu frontend-ul
+    const friends = friendsResult.rows.reduce((acc, row) => {
+      acc[row.friend_username] = row.tags.filter(tag => tag !== null);
       return acc;
     }, {});
-    friendsData[username].friends = convertedFriends;
-    writeFile(config.FILES.friends, friendsData);
-  }
-  
-  res.json({
-    friends: friendsData[username].friends || {},
-    groups: friendsData[username].groups || [],
-    sharedListAccess: friendsData[username].sharedListAccess || []
-  });
-});
-router.get('/:username/filter', (req, res) => {
-  const { username } = req.params;
-  const { tags } = req.query; // tags va fi un string cu tag-uri separate prin virgulă
-  
-  const friendsData = readFile(config.FILES.friends);
-  const userData = friendsData[username];
-  
-  if (!userData || !userData.friends) {
-    return res.json({ friends: {} });
-  }
 
-  // Dacă nu sunt specificate tag-uri, returnăm toți prietenii
-  if (!tags) {
-    return res.json({ friends: userData.friends });
+    res.json({
+      friends,
+      groups: groupsResult.rows.map(group => ({
+        name: group.name,
+        members: group.members,
+        createdBy: group.created_by
+      })),
+      sharedListAccess: accessResult.rows.map(row => row.username)
+    });
+  } catch (error) {
+    console.error('Eroare la obținerea prietenilor:', error);
+    res.status(500).json({ message: 'Eroare la obținerea prietenilor' });
   }
-
-  const tagArray = tags.split(',');
-  
-  // Filtrăm prietenii care au toate tag-urile specificate
-  const filteredFriends = Object.entries(userData.friends)
-    .reduce((acc, [friend, friendTags]) => {
-      if (tagArray.every(tag => friendTags.includes(tag))) {
-        acc[friend] = friendTags;
-      }
-      return acc;
-    }, {});
-
-  res.json({ friends: filteredFriends });
 });
 
-// Modificăm ruta de adăugare prieten pentru a preveni auto-adăugarea
-router.post('/:username/add', (req, res) => {
+// POST /friends/:username/add - Adaugă un prieten nou
+router.post('/:username/add', async (req, res) => {
   const { username } = req.params;
   const { friendUsername } = req.body;
   
@@ -80,176 +94,196 @@ router.post('/:username/add', (req, res) => {
     return res.status(400).json({ message: 'Username-ul prietenului este obligatoriu!' });
   }
 
-  // Verificăm dacă utilizatorul încearcă să se adauge pe sine
-  if (username === friendUsername) {
-    return res.status(400).json({ message: 'Nu te poți adăuga pe tine ca prieten!' });
-  }
+  try {
+    await db.query('BEGIN');
 
-  // Verificăm dacă prietenul există în users.txt
-  const users = readFile(config.FILES.users);
-  if (!users[friendUsername]) {
-    return res.status(404).json({ message: 'Utilizatorul nu există!' });
-  }
+    // Verificăm dacă utilizatorul încearcă să se adauge pe sine
+    if (username === friendUsername) {
+      await db.query('ROLLBACK');
+      return res.status(400).json({ message: 'Nu te poți adăuga pe tine ca prieten!' });
+    }
 
-  const friendsData = readFile(config.FILES.friends);
-  
-  if (!friendsData[username]) {
-    friendsData[username] = {
-      friends: {},
-      sharedListAccess: []
-    };
+    // Obținem ID-urile utilizatorilor
+    const [userResult, friendResult] = await Promise.all([
+      db.query('SELECT id FROM users WHERE username = $1', [username]),
+      db.query('SELECT id FROM users WHERE username = $1', [friendUsername])
+    ]);
+
+    if (userResult.rows.length === 0 || friendResult.rows.length === 0) {
+      await db.query('ROLLBACK');
+      return res.status(404).json({ message: 'Utilizator negăsit!' });
+    }
+
+    const userId = userResult.rows[0].id;
+    const friendId = friendResult.rows[0].id;
+
+    // Verificăm dacă prietenia există deja
+    const existingFriendship = await db.query(
+      'SELECT id FROM friendships WHERE user_id = $1 AND friend_id = $2',
+      [userId, friendId]
+    );
+
+    if (existingFriendship.rows.length > 0) {
+      await db.query('ROLLBACK');
+      return res.status(400).json({ message: 'Utilizatorii sunt deja prieteni!' });
+    }
+
+    // Adăugăm prietenia
+    await db.query(
+      'INSERT INTO friendships (user_id, friend_id) VALUES ($1, $2)',
+      [userId, friendId]
+    );
+
+    await db.query('COMMIT');
+
+    // Returnăm lista actualizată de prieteni
+    const friendsResult = await db.query(`
+      SELECT 
+        u.username as friend_username,
+        array_agg(ft.name) as tags
+      FROM friendships f
+      JOIN users u ON f.friend_id = u.id
+      LEFT JOIN friendship_tags ftags ON f.id = ftags.friendship_id
+      LEFT JOIN friend_tags ft ON ftags.tag_id = ft.id
+      WHERE f.user_id = $1
+      GROUP BY u.username
+    `, [userId]);
+
+    const friends = friendsResult.rows.reduce((acc, row) => {
+      acc[row.friend_username] = row.tags.filter(tag => tag !== null);
+      return acc;
+    }, {});
+
+    res.json({ friends });
+  } catch (error) {
+    await db.query('ROLLBACK');
+    console.error('Eroare la adăugarea prietenului:', error);
+    res.status(500).json({ message: 'Eroare la adăugarea prietenului' });
   }
-  
-  if (friendsData[username].friends[friendUsername]) {
-    return res.status(400).json({ message: 'Utilizatorii sunt deja prieteni!' });
-  }
-  
-  friendsData[username].friends[friendUsername] = [];
-  writeFile(config.FILES.friends, friendsData);
-  
-  res.json({
-    friends: friendsData[username].friends,
-    sharedListAccess: friendsData[username].sharedListAccess
-  });
 });
-// Update friend tags
-router.put('/:username/friends/:friendUsername/tags', (req, res) => {
+
+// PUT /friends/:username/friends/:friendUsername/tags - Actualizează tag-urile unui prieten
+router.put('/:username/friends/:friendUsername/tags', async (req, res) => {
   const { username, friendUsername } = req.params;
   const { tags } = req.body;
   
-  const friendsData = readFile(config.FILES.friends);
-  const availableTags = readFile(config.FILES.friendTags);
-  
-  // Validate tags
-  if (tags) {
-    const invalidTags = tags.filter(tag => !availableTags.includes(tag));
-    if (invalidTags.length > 0) {
-      return res.status(400).json({ 
-        message: `Etichete invalide: ${invalidTags.join(', ')}` 
-      });
+  try {
+    await db.query('BEGIN');
+
+    // Obținem ID-urile necesare
+    const [userResult, friendResult] = await Promise.all([
+      db.query('SELECT id FROM users WHERE username = $1', [username]),
+      db.query('SELECT id FROM users WHERE username = $1', [friendUsername])
+    ]);
+
+    if (userResult.rows.length === 0 || friendResult.rows.length === 0) {
+      await db.query('ROLLBACK');
+      return res.status(404).json({ message: 'Utilizator negăsit!' });
     }
-  }
-  
-  // Update tags
-  friendsData[username].friends[friendUsername] = tags || [];
-  writeFile(config.FILES.friends, friendsData);
-  
-  res.json(friendsData[username]);
-});
 
-// Update shared list access
-router.post('/:username/share', (req, res) => {
-  const { username } = req.params;
-  const { selectedFriends } = req.body;
-  
-  if (!Array.isArray(selectedFriends)) {
-    return res.status(400).json({ message: 'Lista de prieteni selectați este invalidă!' });
-  }
+    const userId = userResult.rows[0].id;
+    const friendId = friendResult.rows[0].id;
 
-  const friendsData = readFile(config.FILES.friends);
-  
-  // Validate that all selected friends are actually friends
-  const invalidFriends = selectedFriends.filter(
-    friend => !Object.keys(friendsData[username].friends).includes(friend)
-  );
-  
-  if (invalidFriends.length > 0) {
-    return res.status(400).json({ 
-      message: `Următorii utilizatori nu sunt în lista de prieteni: ${invalidFriends.join(', ')}` 
-    });
-  }
+    // Obținem ID-ul prieteniei
+    const friendshipResult = await db.query(
+      'SELECT id FROM friendships WHERE user_id = $1 AND friend_id = $2',
+      [userId, friendId]
+    );
 
-  friendsData[username].sharedListAccess = selectedFriends;
-  writeFile(config.FILES.friends, friendsData);
-  
-  res.json(friendsData[username]);
-});
+    if (friendshipResult.rows.length === 0) {
+      await db.query('ROLLBACK');
+      return res.status(404).json({ message: 'Prietenie negăsită!' });
+    }
 
-// Get filtered friends
-router.get('/:username/filter', (req, res) => {
-  const { username } = req.params;
-  const { tags } = req.query; // tags va fi un array de tag-uri
-  
-  const friendsData = readFile(config.FILES.friends);
-  const userData = friendsData[username];
-  
-  if (!userData) {
-    return res.json({ friends: {} });
-  }
+    const friendshipId = friendshipResult.rows[0].id;
 
-  if (!tags || tags.length === 0) {
-    return res.json({ friends: userData.friends });
-  }
+    // Ștergem tag-urile vechi
+    await db.query(
+      'DELETE FROM friendship_tags WHERE friendship_id = $1',
+      [friendshipId]
+    );
 
-  // Convertim string-ul de tag-uri într-un array
-  const tagArray = Array.isArray(tags) ? tags : tags.split(',');
-  
-  // Filtrăm prietenii care au toate tag-urile specificate
-  const filteredFriends = Object.entries(userData.friends)
-    .reduce((acc, [friend, friendTags]) => {
-      if (tagArray.every(tag => friendTags.includes(tag))) {
-        acc[friend] = friendTags;
+    // Adăugăm tag-urile noi
+    if (tags && tags.length > 0) {
+      for (const tagName of tags) {
+        const tagResult = await db.query(
+          'SELECT id FROM friend_tags WHERE name = $1',
+          [tagName]
+        );
+        if (tagResult.rows.length > 0) {
+          await db.query(
+            'INSERT INTO friendship_tags (friendship_id, tag_id) VALUES ($1, $2)',
+            [friendshipId, tagResult.rows[0].id]
+          );
+        }
       }
-      return acc;
-    }, {});
+    }
 
-  res.json({ friends: filteredFriends });
+    await db.query('COMMIT');
+
+    // Returnăm datele actualizate
+    const updatedData = await getFriendData(userId);
+    res.json(updatedData);
+  } catch (error) {
+    await db.query('ROLLBACK');
+    console.error('Eroare la actualizarea tag-urilor:', error);
+    res.status(500).json({ message: 'Eroare la actualizarea tag-urilor' });
+  }
 });
 
-router.post('/:username/groups', (req, res) => {
-  const { username } = req.params;
-  const { groupName, members } = req.body;
+// Helper function pentru obținerea datelor despre prieteni
+async function getFriendData(userId) {
+  const friendsQuery = `
+    SELECT 
+      u.username as friend_username,
+      array_agg(ft.name) as tags
+    FROM friendships f
+    JOIN users u ON f.friend_id = u.id
+    LEFT JOIN friendship_tags ftags ON f.id = ftags.friendship_id
+    LEFT JOIN friend_tags ft ON ftags.tag_id = ft.id
+    WHERE f.user_id = $1
+    GROUP BY u.username
+  `;
   
-  const friendsData = readFile(config.FILES.friends);
-  const allMembers = [username, ...members]; // Include creator in members list
-  
-  // Adaugă grupul pentru fiecare membru (inclusiv creatorul)
-  allMembers.forEach(member => {
-    if (!friendsData[member]) {
-      friendsData[member] = { friends: {}, groups: [], sharedListAccess: [] };
-    }
-    if (!friendsData[member].groups) {
-      friendsData[member].groups = [];
-    }
-    friendsData[member].groups.push({ 
-      name: groupName, 
-      members: allMembers,
-      createdBy: username 
-    });
-  });
-
-  writeFile(config.FILES.friends, friendsData);
-  
-  res.json({
-    friends: friendsData[username].friends,
-    groups: friendsData[username].groups,
-    sharedListAccess: friendsData[username].sharedListAccess
-  });
-});
-
-// Adaugă în friends.js
-router.get('/:username/shared-products', (req, res) => {
-  const { username } = req.params;
-  const friendsData = readFile(config.FILES.friends);
-  const foods = readFile(config.FILES.foods);
-  const foodsUnavailable = readFile(config.FILES.foodsUnavailable);
-  
-  // Găsește prietenii care au dat acces la lista lor
-  const friendsWithAccess = Object.entries(friendsData)
-    .filter(([friend, data]) => 
-      friend !== username && // Excludem utilizatorul curent
-      data.sharedListAccess && 
-      data.sharedListAccess.includes(username)
+  const groupsQuery = `
+    SELECT 
+      g.name,
+      g.created_by,
+      array_agg(u.username) as members
+    FROM groups g
+    JOIN group_members gm ON g.id = gm.group_id
+    JOIN users u ON gm.user_id = u.id
+    WHERE g.id IN (
+      SELECT group_id FROM group_members WHERE user_id = $1
     )
-    .reduce((acc, [friend]) => {
-      // Colectează produsele disponibile ale prietenului
-      const availableProducts = foodsUnavailable[friend] || [];
-      if (availableProducts.length > 0) {
-        acc[friend] = availableProducts;
-      }
-      return acc;
-    }, {});
+    GROUP BY g.id, g.name, g.created_by
+  `;
+  
+  const accessQuery = `
+    SELECT u.username
+    FROM shared_list_access sla
+    JOIN users u ON sla.viewer_id = u.id
+    WHERE sla.user_id = $1
+  `;
 
-  res.json(friendsWithAccess);
-});
+  const [friendsResult, groupsResult, accessResult] = await Promise.all([
+    db.query(friendsQuery, [userId]),
+    db.query(groupsQuery, [userId]),
+    db.query(accessQuery, [userId])
+  ]);
+
+  return {
+    friends: friendsResult.rows.reduce((acc, row) => {
+      acc[row.friend_username] = row.tags.filter(tag => tag !== null);
+      return acc;
+    }, {}),
+    groups: groupsResult.rows.map(group => ({
+      name: group.name,
+      members: group.members,
+      createdBy: group.created_by
+    })),
+    sharedListAccess: accessResult.rows.map(row => row.username)
+  };
+}
+
 module.exports = router;
