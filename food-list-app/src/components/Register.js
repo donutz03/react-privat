@@ -1,14 +1,21 @@
-// Login.js
+
 import React, { useState } from 'react';
 
-function Login({ onLogin }) {
+function Register({ onRegisterSuccess }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (password !== confirmPassword) {
+      alert('Parolele nu coincid!');
+      return;
+    }
+
     try {
-      const response = await fetch('http://localhost:5000/auth/login', {
+      const response = await fetch('http://localhost:5000/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
@@ -17,26 +24,20 @@ function Login({ onLogin }) {
       const data = await response.json();
       
       if (response.ok) {
-        // First store the user data
-        localStorage.setItem('currentUser', username);
-        localStorage.setItem('userContact', JSON.stringify({
-          phone: data.user?.phone,
-          address: data.user?.address
-        }));
-        // Then call onLogin
-        onLogin(username);
+        alert('Cont creat cu succes!');
+        onRegisterSuccess();
       } else {
-        alert(data.message || 'Eroare la autentificare');
+        alert(data.message || 'Eroare la înregistrare');
       }
     } catch (error) {
-      console.error('Eroare la autentificare:', error);
-      alert('Eroare la autentificare');
+      console.error('Eroare la înregistrare:', error);
+      alert('Eroare la înregistrare');
     }
   };
 
   return (
     <div style={{ maxWidth: '400px', margin: '40px auto', padding: '20px' }}>
-      <h2>Autentificare</h2>
+      <h2>Înregistrare</h2>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
         <input
           type="text"
@@ -52,6 +53,13 @@ function Login({ onLogin }) {
           onChange={(e) => setPassword(e.target.value)}
           style={{ padding: '8px' }}
         />
+        <input
+          type="password"
+          placeholder="Confirmă parola"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          style={{ padding: '8px' }}
+        />
         <button 
           type="submit"
           style={{ 
@@ -63,11 +71,11 @@ function Login({ onLogin }) {
             cursor: 'pointer' 
           }}
         >
-          Autentificare
+          Înregistrare
         </button>
       </form>
     </div>
   );
 }
 
-export default Login;
+export default Register;

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import Login from './Login';
-import Register from './Register';
-import NotificationBell from './NotificationBell';
-import ExpiredProductsTable from './ExpiredProductsTable';
-import FoodTable from './FoodTable';
-import CategoryCheckboxes from './CategoryCheckboxes';
+import Login from './components/Login';
+import Register from './components/Register';
+import NotificationBell from './components/NotificationBell';
+import ExpiredProductsTable from './components/ExpiredProductsTable';
+import FoodTable from './components/FoodTable';
+import CategoryCheckboxes from './components/CategoryCheckboxes';
 import FriendsManager from './components/FriendsManager';
 import SharedProducts from './components/SharedProducts';
 

@@ -1,4 +1,3 @@
-// FriendFilter.js
 import React, { useState, useEffect } from 'react';
 
 const FriendFilter = ({ onFilterChange }) => {
@@ -6,7 +5,6 @@ const FriendFilter = ({ onFilterChange }) => {
   const [selectedTags, setSelectedTags] = useState([]);
   
   useEffect(() => {
-    // Încarcă toate etichetele disponibile
     fetch('http://localhost:5000/friends/tags')
       .then(res => res.json())
       .then(data => setAvailableTags(data))

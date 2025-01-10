@@ -1,22 +1,13 @@
-
-// Register.js
 import React, { useState } from 'react';
 
-function Register({ onRegisterSuccess }) {
+function Login({ onLogin }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (password !== confirmPassword) {
-      alert('Parolele nu coincid!');
-      return;
-    }
-
     try {
-      const response = await fetch('http://localhost:5000/auth/register', {
+      const response = await fetch('http://localhost:5000/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
@@ -25,20 +16,26 @@ function Register({ onRegisterSuccess }) {
       const data = await response.json();
       
       if (response.ok) {
-        alert('Cont creat cu succes!');
-        onRegisterSuccess();
+        // First store the user data
+        localStorage.setItem('currentUser', username);
+        localStorage.setItem('userContact', JSON.stringify({
+          phone: data.user?.phone,
+          address: data.user?.address
+        }));
+        // Then call onLogin
+        onLogin(username);
       } else {
-        alert(data.message || 'Eroare la înregistrare');
+        alert(data.message || 'Eroare la autentificare');
       }
     } catch (error) {
-      console.error('Eroare la înregistrare:', error);
-      alert('Eroare la înregistrare');
+      console.error('Eroare la autentificare:', error);
+      alert('Eroare la autentificare');
     }
   };
 
   return (
     <div style={{ maxWidth: '400px', margin: '40px auto', padding: '20px' }}>
-      <h2>Înregistrare</h2>
+      <h2>Autentificare</h2>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
         <input
           type="text"
@@ -54,13 +51,6 @@ function Register({ onRegisterSuccess }) {
           onChange={(e) => setPassword(e.target.value)}
           style={{ padding: '8px' }}
         />
-        <input
-          type="password"
-          placeholder="Confirmă parola"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          style={{ padding: '8px' }}
-        />
         <button 
           type="submit"
           style={{ 
@@ -72,11 +62,11 @@ function Register({ onRegisterSuccess }) {
             cursor: 'pointer' 
           }}
         >
-          Înregistrare
+          Autentificare
         </button>
       </form>
     </div>
   );
 }
 
-export default Register;
+export default Login;

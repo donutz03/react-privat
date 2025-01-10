@@ -4,7 +4,6 @@ import { Bell } from 'lucide-react';
 const NotificationBell = ({ foods, onMarkAvailable }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   
-  // Acum filtrăm direct folosind proprietatea isNearExpiration din backend
   const nearExpirationFoods = foods.filter(food => food.isNearExpiration);
   
   return (

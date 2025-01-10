@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import FriendFilter from './FriendFilter';
+import FriendFilter from './components/FriendFilter';
 
 const FriendsManager = ({ currentUser }) => {
   const [friends, setFriends] = useState({});
