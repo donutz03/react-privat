@@ -95,3 +95,26 @@ ALTER TABLE foods ADD COLUMN image_url TEXT;
 ALTER TABLE foods DROP COLUMN IF EXISTS image_url;
 ALTER TABLE foods ADD COLUMN image_data BYTEA;
 ALTER TABLE foods ADD COLUMN image_type TEXT;
+
+-- First delete from claimed_products
+DELETE FROM claimed_products 
+WHERE food_id IN (
+    SELECT id FROM foods 
+    WHERE image_data IS NULL
+);
+
+-- Then delete from food_category_relations
+DELETE FROM food_category_relations 
+WHERE food_id IN (
+    SELECT id FROM foods 
+    WHERE image_data IS NULL
+);
+
+-- Finally delete foods without images
+DELETE FROM foods 
+WHERE image_data IS NULL;
+
+-- Add NOT NULL constraint to image columns
+ALTER TABLE foods 
+    ALTER COLUMN image_data SET NOT NULL,
+    ALTER COLUMN image_type SET NOT NULL;
