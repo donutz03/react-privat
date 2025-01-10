@@ -2,6 +2,93 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
 const { isNearExpiration } = require('../utils/dateHelpers');
+
+const multer = require('multer');
+const path = require('path');
+
+// Configurare storage pentru multer
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/') // Asigură-te că acest director există
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname))
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  fileFilter: function (req, file, cb) {
+    const filetypes = /jpeg|jpg|png/;
+    const mimetype = filetypes.test(file.mimetype);
+    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+
+    if (mimetype && extname) {
+      return cb(null, true);
+    }
+    cb(new Error('Doar imagini (jpeg, jpg, png) sunt permise!'));
+  }
+});
+// Modifică ruta POST pentru adăugarea unui produs nou
+router.post('/:username', upload.single('image'), async (req, res) => {
+  const { username } = req.params;
+  const { name, expirationDate, categories } = req.body;
+  const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+
+  if (!name || !expirationDate || !categories) {
+    return res.status(400).json({ 
+      message: 'Numele și data expirării sunt obligatorii.' 
+    });
+  }
+
+  try {
+    await db.query('BEGIN');
+
+    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      await db.query('ROLLBACK');
+      return res.status(404).json({ message: 'Utilizator negăsit' });
+    }
+    const userId = userResult.rows[0].id;
+
+    // Inserăm produsul cu imagine
+    const foodResult = await db.query(
+      'INSERT INTO foods (user_id, name, expiration_date, image_url) VALUES ($1, $2, $3, $4) RETURNING id',
+      [userId, name, expirationDate, imageUrl]
+    );
+    const foodId = foodResult.rows[0].id;
+
+    // Inserăm relațiile cu categoriile
+    const categoriesArray = Array.isArray(categories) ? categories : JSON.parse(categories);
+    for (const categoryName of categoriesArray) {
+      const categoryResult = await db.query(
+        'SELECT id FROM food_categories WHERE name = $1',
+        [categoryName]
+      );
+      const categoryId = categoryResult.rows[0].id;
+      
+      await db.query(
+        'INSERT INTO food_category_relations (food_id, category_id) VALUES ($1, $2)',
+        [foodId, categoryId]
+      );
+    }
+
+    await db.query('COMMIT');
+
+    // Returnăm lista actualizată de produse
+    const updatedFoods = await getFoodsWithCategories(
+      'WHERE f.user_id = $1 AND NOT f.is_available AND NOT f.is_expired',
+      [userId]
+    );
+    res.status(201).json(updatedFoods);
+  } catch (error) {
+    await db.query('ROLLBACK');
+    console.error('Eroare la adăugarea produsului:', error);
+    res.status(500).json({ message: 'Eroare la adăugarea produsului' });
+  }
+});
+
+// Modifică funcția getFoodsWithCategories pentru a include și imaginea
 const getFoodsWithCategories = async (query, params) => {
   const result = await db.query(`
     SELECT f.*, 
@@ -19,7 +106,8 @@ const getFoodsWithCategories = async (query, params) => {
     name: food.name,
     expirationDate: food.formatted_date,
     categories: food.categories.filter(c => c !== null),
-    isNearExpiration: isNearExpiration(new Date(food.formatted_date))
+    isNearExpiration: isNearExpiration(new Date(food.formatted_date)),
+    imageUrl: food.image_url
   }));
 };
 router.get('/:username', async (req, res) => {
