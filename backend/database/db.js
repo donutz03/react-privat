@@ -1,3 +1,4 @@
+// database/db.js
 const { Pool } = require('pg');
 require('dotenv').config();
 
@@ -9,7 +10,16 @@ const pool = new Pool({
     port: process.env.DB_PORT,
 });
 
+// Pentru a verifica conexiunea
+pool.connect((err, client, release) => {
+    if (err) {
+        return console.error('Error acquiring client', err.stack);
+    }
+    console.log('Database connected successfully!');
+    release();
+});
+
 module.exports = {
     query: (text, params) => pool.query(text, params),
-    pool,
+    pool
 };
