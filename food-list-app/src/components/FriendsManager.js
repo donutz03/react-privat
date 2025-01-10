@@ -105,6 +105,13 @@ const FriendsManager = ({ currentUser }) => {
       return;
     }
   
+    if (newFriend === currentUser) {
+      setError('Nu vă puteți adăuga pe dvs. ca prieten');
+      setTimeout(() => setError(''), 3000); // Clear error after 3 seconds
+      setNewFriend(''); // Clear input
+      return;
+    }
+  
     try {
       const response = await fetch(`http://localhost:5000/friends/${currentUser}/add`, {
         method: 'POST',
