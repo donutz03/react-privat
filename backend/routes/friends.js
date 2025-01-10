@@ -286,4 +286,353 @@ async function getFriendData(userId) {
   };
 }
 
+// POST /friends/:username/groups - Creează un grup nou
+router.post('/:username/groups', async (req, res) => {
+  const { username } = req.params;
+  const { groupName, members } = req.body;
+  
+  if (!groupName || !members || !Array.isArray(members) || members.length === 0) {
+    return res.status(400).json({ message: 'Numele grupului și cel puțin un membru sunt necesare!' });
+  }
+
+  try {
+    await db.query('BEGIN');
+
+    // Obținem ID-ul creatorului
+    const creatorResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (creatorResult.rows.length === 0) {
+      await db.query('ROLLBACK');
+      return res.status(404).json({ message: 'Utilizator negăsit' });
+    }
+    const creatorId = creatorResult.rows[0].id;
+
+    // Creăm grupul
+    const groupResult = await db.query(
+      'INSERT INTO groups (name, created_by) VALUES ($1, $2) RETURNING id',
+      [groupName, creatorId]
+    );
+    const groupId = groupResult.rows[0].id;
+
+    // Adăugăm creatorul în grup
+    await db.query(
+      'INSERT INTO group_members (group_id, user_id) VALUES ($1, $2)',
+      [groupId, creatorId]
+    );
+
+    // Adăugăm membrii în grup
+    for (const memberUsername of members) {
+      const memberResult = await db.query('SELECT id FROM users WHERE username = $1', [memberUsername]);
+      if (memberResult.rows.length > 0) {
+        await db.query(
+          'INSERT INTO group_members (group_id, user_id) VALUES ($1, $2)',
+          [groupId, memberResult.rows[0].id]
+        );
+      }
+    }
+
+    await db.query('COMMIT');
+
+    // Returnăm datele actualizate
+    const updatedData = await getFriendData(creatorId);
+    res.json(updatedData);
+  } catch (error) {
+    await db.query('ROLLBACK');
+    console.error('Eroare la crearea grupului:', error);
+    res.status(500).json({ message: 'Eroare la crearea grupului' });
+  }
+});
+
+// GET /friends/:username/groups - Obține toate grupurile unui utilizator
+router.get('/:username/groups', async (req, res) => {
+  const { username } = req.params;
+
+  try {
+    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Utilizator negăsit' });
+    }
+    const userId = userResult.rows[0].id;
+
+    const groupsQuery = `
+      SELECT 
+        g.id,
+        g.name,
+        u_creator.username as created_by,
+        array_agg(u_member.username) as members
+      FROM groups g
+      JOIN users u_creator ON g.created_by = u_creator.id
+      JOIN group_members gm ON g.id = gm.group_id
+      JOIN users u_member ON gm.user_id = u_member.id
+      WHERE g.id IN (
+        SELECT group_id FROM group_members WHERE user_id = $1
+      )
+      GROUP BY g.id, g.name, u_creator.username
+      ORDER BY g.created_at DESC
+    `;
+
+    const groupsResult = await db.query(groupsQuery, [userId]);
+    res.json(groupsResult.rows);
+  } catch (error) {
+    console.error('Eroare la obținerea grupurilor:', error);
+    res.status(500).json({ message: 'Eroare la obținerea grupurilor' });
+  }
+});
+
+// DELETE /friends/:username/groups/:groupId - Șterge un grup
+router.delete('/:username/groups/:groupId', async (req, res) => {
+  const { username, groupId } = req.params;
+
+  try {
+    await db.query('BEGIN');
+
+    // Verificăm dacă utilizatorul este creatorul grupului
+    const groupCheck = await db.query(`
+      SELECT g.id 
+      FROM groups g
+      JOIN users u ON g.created_by = u.id
+      WHERE g.id = $1 AND u.username = $2
+    `, [groupId, username]);
+
+    if (groupCheck.rows.length === 0) {
+      await db.query('ROLLBACK');
+      return res.status(403).json({ message: 'Nu aveți permisiunea de a șterge acest grup' });
+    }
+
+    // Ștergem membrii grupului
+    await db.query('DELETE FROM group_members WHERE group_id = $1', [groupId]);
+    
+    // Ștergem grupul
+    await db.query('DELETE FROM groups WHERE id = $1', [groupId]);
+
+    await db.query('COMMIT');
+
+    // Returnăm grupurile rămase
+    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    const updatedData = await getFriendData(userResult.rows[0].id);
+    res.json(updatedData);
+  } catch (error) {
+    await db.query('ROLLBACK');
+    console.error('Eroare la ștergerea grupului:', error);
+    res.status(500).json({ message: 'Eroare la ștergerea grupului' });
+  }
+});
+
+// PUT /friends/:username/groups/:groupId/members - Actualizează membrii unui grup
+router.put('/:username/groups/:groupId/members', async (req, res) => {
+  const { username, groupId } = req.params;
+  const { members } = req.body;
+
+  if (!Array.isArray(members)) {
+    return res.status(400).json({ message: 'Lista de membri este invalidă' });
+  }
+
+  try {
+    await db.query('BEGIN');
+
+    // Verificăm dacă utilizatorul este creatorul grupului
+    const groupCheck = await db.query(`
+      SELECT g.id 
+      FROM groups g
+      JOIN users u ON g.created_by = u.id
+      WHERE g.id = $1 AND u.username = $2
+    `, [groupId, username]);
+
+    if (groupCheck.rows.length === 0) {
+      await db.query('ROLLBACK');
+      return res.status(403).json({ message: 'Nu aveți permisiunea de a modifica acest grup' });
+    }
+
+    // Ștergem membrii existenți (cu excepția creatorului)
+    await db.query(`
+      DELETE FROM group_members 
+      WHERE group_id = $1 
+      AND user_id != (SELECT id FROM users WHERE username = $2)
+    `, [groupId, username]);
+
+    // Adăugăm noii membri
+    for (const memberUsername of members) {
+      if (memberUsername !== username) { // Nu adăugăm din nou creatorul
+        const memberResult = await db.query('SELECT id FROM users WHERE username = $1', [memberUsername]);
+        if (memberResult.rows.length > 0) {
+          await db.query(
+            'INSERT INTO group_members (group_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+            [groupId, memberResult.rows[0].id]
+          );
+        }
+      }
+    }
+
+    await db.query('COMMIT');
+
+    // Returnăm datele actualizate
+    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    const updatedData = await getFriendData(userResult.rows[0].id);
+    res.json(updatedData);
+  } catch (error) {
+    await db.query('ROLLBACK');
+    console.error('Eroare la actualizarea membrilor grupului:', error);
+    res.status(500).json({ message: 'Eroare la actualizarea membrilor grupului' });
+  }
+});
+
+// POST /friends/:username/share - Actualizează accesul la lista de produse
+router.post('/:username/share', async (req, res) => {
+  const { username } = req.params;
+  const { selectedFriends } = req.body;
+  
+  if (!Array.isArray(selectedFriends)) {
+    return res.status(400).json({ message: 'Lista de prieteni selectați este invalidă!' });
+  }
+
+  try {
+    await db.query('BEGIN');
+
+    // Obținem ID-ul utilizatorului
+    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      await db.query('ROLLBACK');
+      return res.status(404).json({ message: 'Utilizator negăsit' });
+    }
+    const userId = userResult.rows[0].id;
+
+    // Ștergem toate permisiunile existente
+    await db.query('DELETE FROM shared_list_access WHERE user_id = $1', [userId]);
+
+    // Adăugăm noile permisiuni
+    for (const friendUsername of selectedFriends) {
+      const friendResult = await db.query('SELECT id FROM users WHERE username = $1', [friendUsername]);
+      if (friendResult.rows.length > 0) {
+        await db.query(
+          'INSERT INTO shared_list_access (user_id, viewer_id) VALUES ($1, $2)',
+          [userId, friendResult.rows[0].id]
+        );
+      }
+    }
+
+    await db.query('COMMIT');
+
+    // Returnăm datele actualizate
+    const updatedData = await getFriendData(userId);
+    res.json(updatedData);
+  } catch (error) {
+    await db.query('ROLLBACK');
+    console.error('Eroare la actualizarea accesului:', error);
+    res.status(500).json({ message: 'Eroare la actualizarea accesului' });
+  }
+});
+
+// GET /friends/:username/filter - Filtrează prietenii după tag-uri
+router.get('/:username/filter', async (req, res) => {
+  const { username } = req.params;
+  const { tags } = req.query;
+
+  try {
+    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Utilizator negăsit' });
+    }
+    const userId = userResult.rows[0].id;
+
+    let friendsQuery = `
+      SELECT 
+        u.username as friend_username,
+        array_agg(ft.name) as tags
+      FROM friendships f
+      JOIN users u ON f.friend_id = u.id
+      LEFT JOIN friendship_tags ftags ON f.id = ftags.friendship_id
+      LEFT JOIN friend_tags ft ON ftags.tag_id = ft.id
+      WHERE f.user_id = $1
+    `;
+
+    const queryParams = [userId];
+
+    // Dacă sunt specificate tag-uri pentru filtrare
+    if (tags) {
+      const tagArray = tags.split(',');
+      const tagPlaceholders = tagArray.map((_, idx) => `$${idx + 2}`).join(',');
+      
+      friendsQuery += `
+        AND f.id IN (
+          SELECT ft.friendship_id
+          FROM friendship_tags ft
+          JOIN friend_tags t ON ft.tag_id = t.id
+          WHERE t.name IN (${tagPlaceholders})
+          GROUP BY ft.friendship_id
+          HAVING COUNT(DISTINCT t.name) = $${tagArray.length + 2}
+        )
+      `;
+      
+      queryParams.push(...tagArray, tagArray.length);
+    }
+
+    friendsQuery += ' GROUP BY u.username';
+
+    const friendsResult = await db.query(friendsQuery, queryParams);
+
+    // Formatăm rezultatul pentru frontend
+    const friends = friendsResult.rows.reduce((acc, row) => {
+      acc[row.friend_username] = row.tags.filter(tag => tag !== null);
+      return acc;
+    }, {});
+
+    res.json({ friends });
+  } catch (error) {
+    console.error('Eroare la filtrarea prietenilor:', error);
+    res.status(500).json({ message: 'Eroare la filtrarea prietenilor' });
+  }
+});
+
+// GET /friends/:username/shared-products - Obține produsele partajate de prieteni
+router.get('/:username/shared-products', async (req, res) => {
+  const { username } = req.params;
+
+  try {
+    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Utilizator negăsit' });
+    }
+    const userId = userResult.rows[0].id;
+
+    const sharedProductsQuery = `
+      SELECT 
+        u.username as friend_username,
+        f.id,
+        f.name,
+        f.expiration_date,
+        array_agg(fc.name) as categories
+      FROM users u
+      JOIN shared_list_access sla ON u.id = sla.user_id
+      JOIN foods f ON u.id = f.user_id
+      LEFT JOIN food_category_relations fcr ON f.id = fcr.food_id
+      LEFT JOIN food_categories fc ON fcr.category_id = fc.id
+      WHERE sla.viewer_id = $1
+        AND f.is_available = true
+        AND f.is_expired = false
+      GROUP BY u.username, f.id, f.name, f.expiration_date
+      ORDER BY u.username, f.expiration_date
+    `;
+
+    const result = await db.query(sharedProductsQuery, [userId]);
+
+    // Organizăm produsele pe prieteni
+    const sharedProducts = result.rows.reduce((acc, row) => {
+      if (!acc[row.friend_username]) {
+        acc[row.friend_username] = [];
+      }
+      acc[row.friend_username].push({
+        id: row.id,
+        name: row.name,
+        expirationDate: row.expiration_date.toISOString().split('T')[0],
+        categories: row.categories.filter(c => c !== null)
+      });
+      return acc;
+    }, {});
+
+    res.json(sharedProducts);
+  } catch (error) {
+    console.error('Eroare la obținerea produselor partajate:', error);
+    res.status(500).json({ message: 'Eroare la obținerea produselor partajate' });
+  }
+});
+
 module.exports = router;
