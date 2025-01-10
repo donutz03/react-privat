@@ -3,7 +3,6 @@ const router = express.Router();
 const db = require('../database/db');
 const { isNearExpiration } = require('../utils/dateHelpers');
 
-// Helper function pentru a obține produsele cu categoriile lor
 const getFoodsWithCategories = async (query, params) => {
   const result = await db.query(`
     SELECT f.*, 
@@ -24,7 +23,7 @@ const getFoodsWithCategories = async (query, params) => {
   }));
 };
 
-// GET /foods/:username - Obține toate produsele unui utilizator
+// GET /foods/:username - Obține produsele disponibile ale unui utilizator
 router.get('/:username', async (req, res) => {
   const { username } = req.params;
   
@@ -36,7 +35,7 @@ router.get('/:username', async (req, res) => {
 
     const userId = userResult.rows[0].id;
     const foods = await getFoodsWithCategories(
-      'WHERE f.user_id = $1 AND NOT f.is_available AND NOT f.is_expired',
+      'WHERE f.user_id = $1 AND is_available = false AND is_expired = false',
       [userId]
     );
     
@@ -47,7 +46,53 @@ router.get('/:username', async (req, res) => {
   }
 });
 
-// POST /foods/:username - Adaugă un produs nou
+// GET /foods/unavailable/:username - Obține produsele marcate ca disponibile
+router.get('/unavailable/:username', async (req, res) => {
+  const { username } = req.params;
+  
+  try {
+    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Utilizator negăsit' });
+    }
+
+    const userId = userResult.rows[0].id;
+    const foods = await getFoodsWithCategories(
+      'WHERE f.user_id = $1 AND is_available = true AND is_expired = false',
+      [userId]
+    );
+    
+    res.json(foods);
+  } catch (error) {
+    console.error('Eroare la obținerea produselor disponibile:', error);
+    res.status(500).json({ message: 'Eroare la obținerea produselor disponibile' });
+  }
+});
+
+// GET /foods/expired/:username - Obține produsele expirate
+router.get('/expired/:username', async (req, res) => {
+  const { username } = req.params;
+  
+  try {
+    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Utilizator negăsit' });
+    }
+
+    const userId = userResult.rows[0].id;
+    const foods = await getFoodsWithCategories(
+      'WHERE f.user_id = $1 AND is_expired = true',
+      [userId]
+    );
+    
+    res.json(foods);
+  } catch (error) {
+    console.error('Eroare la obținerea produselor expirate:', error);
+    res.status(500).json({ message: 'Eroare la obținerea produselor expirate' });
+  }
+});
+
+
 router.post('/:username', async (req, res) => {
   const { username } = req.params;
   const { name, expirationDate, categories } = req.body;
