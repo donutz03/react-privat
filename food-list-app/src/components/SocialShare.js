@@ -1,107 +1,53 @@
-import React, { useEffect, useState } from 'react';
-import { Share2, Facebook, Instagram } from 'lucide-react';
+import React from 'react';
+import { Facebook, Instagram } from 'lucide-react';
 
 const SocialShare = ({ foods }) => {
-  const [isFBLoaded, setIsFBLoaded] = useState(false);
-  const [isLoggedInFB, setIsLoggedInFB] = useState(false);
-
-  useEffect(() => {
-    // Load Facebook SDK
-    const loadFacebookSDK = () => {
-      window.fbAsyncInit = function() {
-        window.FB.init({
-          appId: process.env.REACT_APP_FACEBOOK_APP_ID,
-          cookie: true,
-          xfbml: true,
-          version: 'v18.0'
-        });
-
-        // Check Facebook login status
-        window.FB.getLoginStatus(function(response) {
-          setIsLoggedInFB(response.status === 'connected');
-        });
-
-        setIsFBLoaded(true);
-      };
-
-      // Load SDK asynchronously
-      (function(d, s, id) {
-        var js, fjs = d.getElementsByTagName(s)[0];
-        if (d.getElementById(id)) return;
-        js = d.createElement(s); js.id = id;
-        js.src = "https://connect.facebook.net/en_US/sdk.js";
-        fjs.parentNode.insertBefore(js, fjs);
-      }(document, 'script', 'facebook-jssdk'));
-    };
-
-    loadFacebookSDK();
-  }, []);
-
-  const handleFacebookLogin = (callback) => {
-    window.FB.login(function(response) {
-      if (response.status === 'connected') {
-        setIsLoggedInFB(true);
-        if (callback) callback();
-      }
-    }, { scope: 'public_profile,publish_to_groups' });
-  };
-
   const shareToFacebook = () => {
-    const shareFBContent = () => {
-      const content = {
-        method: 'feed',
-        link: window.location.href,
-        message: 'Check out these available products!',
-        caption: 'Products available for sharing',
-        description: foods.map(food => 
-          `${food.name} - Expires: ${food.expirationDate}\nCategories: ${food.categories.join(', ')}`
-        ).join('\n\n')
-      };
-
-      window.FB.ui(content, function(response) {
-        if (response && !response.error_message) {
-          alert('Successfully shared on Facebook!');
-        } else {
-          alert('Error sharing to Facebook');
-        }
-      });
-    };
-
-    if (!isLoggedInFB) {
-      handleFacebookLogin(() => shareFBContent());
-    } else {
-      shareFBContent();
+    // Get the first available food's image
+    const firstFood = foods[0];
+    if (!firstFood || !firstFood.imageUrl) {
+      alert('Nu există imagini disponibile pentru share');
+      return;
     }
+
+    // Construim URL-ul complet pentru imagine
+    const imageUrl = `http://localhost:5000${firstFood.imageUrl}`;
+    
+    // Folosim og:image pentru a include imaginea
+    const url = `https://www.facebook.com/dialog/share?
+      app_id=YOUR_APP_ID&
+      display=popup&
+      href=${encodeURIComponent(window.location.href)}&
+      picture=${encodeURIComponent(imageUrl)}&
+      title=${encodeURIComponent('Produse disponibile')}&
+      caption=${encodeURIComponent('Food Sharing App')}`.replace(/\s+/g, '');
+
+    const width = 600;
+    const height = 600;
+    const left = (window.innerWidth - width) / 2;
+    const top = (window.innerHeight - height) / 2;
+
+    window.open(
+      url,
+      'facebook-share-dialog',
+      `width=${width},height=${height},top=${top},left=${left}`
+    );
   };
 
-  const shareToInstagram = async () => {
-    // First, check if on mobile
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    
-    if (isMobile) {
-      // Try to open Instagram app
-      window.location.href = 'instagram://story-camera';
-      
-      // Fallback to Instagram web after a short delay if app doesn't open
-      setTimeout(() => {
-        window.location.href = 'https://www.instagram.com';
-      }, 500);
+  const shareToInstagram = () => {
+    if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+      window.location.href = 'instagram://camera';
     } else {
-      // On desktop, direct to Instagram web
       window.open('https://www.instagram.com', '_blank');
     }
-    
-    alert('Please log in to Instagram to share your story.');
   };
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      gap: '8px', 
-      marginBottom: '16px',
-      padding: '12px',
-      background: '#f5f5f5',
-      borderRadius: '8px'
+    <div style={{
+      display: 'flex',
+      gap: '8px',
+      marginBottom: '20px',
+      marginTop: '20px'
     }}>
       <button
         onClick={shareToFacebook}
@@ -109,17 +55,17 @@ const SocialShare = ({ foods }) => {
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
-          padding: '8px 16px',
+          padding: '10px 20px',
           backgroundColor: '#1877F2',
           color: 'white',
           border: 'none',
-          borderRadius: '4px',
+          borderRadius: '8px',
           cursor: 'pointer',
-          fontSize: '14px'
+          fontWeight: 'bold'
         }}
       >
-        <Facebook size={16} />
-        {isLoggedInFB ? 'Share on Facebook' : 'Login & Share to Facebook'}
+        <Facebook size={20} />
+        Share on Facebook
       </button>
       
       <button
@@ -128,16 +74,16 @@ const SocialShare = ({ foods }) => {
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
-          padding: '8px 16px',
+          padding: '10px 20px',
           backgroundColor: '#E4405F',
           color: 'white',
           border: 'none',
-          borderRadius: '4px',
+          borderRadius: '8px',
           cursor: 'pointer',
-          fontSize: '14px'
+          fontWeight: 'bold'
         }}
       >
-        <Instagram size={16} />
+        <Instagram size={20} />
         Share on Instagram
       </button>
     </div>
