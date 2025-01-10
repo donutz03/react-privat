@@ -12,6 +12,7 @@ function App() {
   const [showSharedProducts, setShowSharedProducts] = useState(false);
   const [currentView, setCurrentView] = useState('products'); // poate fi 'products', 'friends' sau 'shared'
   const [personalFoods, setPersonalFoods] = useState([]);
+  const [selectedImage, setSelectedImage] = useState(null);
   const [sharedFoods, setSharedFoods] = useState([]);
   const [expiredFoods, setExpiredFoods] = useState([]);
   const [newFood, setNewFood] = useState('');
@@ -27,7 +28,9 @@ function App() {
   });
   const [showFriendsManager, setShowFriendsManager] = useState(false);
   const today = new Date().toISOString().split('T')[0];
-
+  const handleImageChange = (file) => {
+    setEditFood(prev => ({ ...prev, image: file }));
+  };
 
   
   const [currentUser, setCurrentUser] = useState(() => {
@@ -362,6 +365,47 @@ function App() {
               availableCategories={availableCategories}
             />
           </div>
+          <div style={{ 
+  marginTop: '10px',
+  border: '2px dashed #ccc',
+  padding: '20px',
+  borderRadius: '4px',
+  textAlign: 'center'
+}}>
+  <input
+    type="file"
+    accept="image/*"
+    onChange={(e) => setSelectedImage(e.target.files[0])}
+    style={{ display: 'none' }}
+    id="food-image"
+  />
+  <label 
+    htmlFor="food-image"
+    style={{ 
+      cursor: 'pointer',
+      display: 'block'
+    }}
+  >
+    {selectedImage ? (
+      <div>
+        <img 
+          src={URL.createObjectURL(selectedImage)} 
+          alt="Preview" 
+          style={{ 
+            maxWidth: '200px', 
+            maxHeight: '200px',
+            margin: '10px auto'
+          }}
+        />
+        <p>Click pentru a schimba imaginea</p>
+      </div>
+    ) : (
+      <div>
+        <p>Click pentru a adăuga o imagine (opțional)</p>
+      </div>
+    )}
+  </label>
+</div>
           <button 
             onClick={addFood}
             style={{ padding: '8px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
@@ -384,6 +428,7 @@ function App() {
     editFood={editFood}
     setEditFood={setEditFood}
     onEditSave={editFoodItem}
+    handleImageChange={handleImageChange}
     onEditClick={(index, food) => {
       setEditingFoodId(index);
       setAvailableEditingId(null); // Resetăm celălalt index
@@ -411,6 +456,7 @@ function App() {
       editFood={editFood}
       setEditFood={setEditFood}
       onEditSave={editUnavailableFoodItem}
+      handleImageChange={handleImageChange}
       onEditClick={(foodId, food) => {
         setAvailableEditingId(foodId);
         setEditingFoodId(null);
