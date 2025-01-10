@@ -635,15 +635,33 @@ router.get('/:username/shared-products', async (req, res) => {
   }
 });
 
-// POST /foods/:ownerUsername/claim/:foodId - Revendică un produs
+// Update the claim endpoint in foods.js
 router.post('/:ownerUsername/claim/:foodId', async (req, res) => {
   const { ownerUsername, foodId } = req.params;
-  const { claimedBy } = req.body; // username-ul persoanei care revendică
+  const { claimedBy } = req.body;
 
   try {
     await db.query('BEGIN');
 
-    // Obținem ID-urile utilizatorilor
+    // Check if the product has already been claimed
+    const claimCheck = await db.query(
+      'SELECT claim_status FROM foods WHERE id = $1',
+      [foodId]
+    );
+
+    if (claimCheck.rows.length === 0) {
+      await db.query('ROLLBACK');
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    if (claimCheck.rows[0].claim_status === 'claimed') {
+      await db.query('ROLLBACK');
+      return res.status(409).json({ 
+        message: 'This product has already been claimed by someone else' 
+      });
+    }
+
+    // Get user IDs and contact information
     const [ownerResult, claimerResult] = await Promise.all([
       db.query('SELECT id, phone, address FROM users WHERE username = $1', [ownerUsername]),
       db.query('SELECT id FROM users WHERE username = $1', [claimedBy])
@@ -651,13 +669,17 @@ router.post('/:ownerUsername/claim/:foodId', async (req, res) => {
 
     if (ownerResult.rows.length === 0 || claimerResult.rows.length === 0) {
       await db.query('ROLLBACK');
-      return res.status(404).json({ message: 'Utilizator negăsit' });
+      return res.status(404).json({ message: 'User not found' });
     }
 
     const ownerId = ownerResult.rows[0].id;
     const claimerId = claimerResult.rows[0].id;
+    const ownerContact = {
+      phone: ownerResult.rows[0].phone,
+      address: ownerResult.rows[0].address
+    };
 
-    // Verificăm dacă produsul există și este disponibil
+    // Find the original food item
     const foodResult = await db.query(
       'SELECT * FROM foods WHERE id = $1 AND user_id = $2 AND is_available = true AND is_expired = false',
       [foodId, ownerId]
@@ -665,62 +687,59 @@ router.post('/:ownerUsername/claim/:foodId', async (req, res) => {
 
     if (foodResult.rows.length === 0) {
       await db.query('ROLLBACK');
-      return res.status(404).json({ message: 'Produsul nu a fost găsit sau nu este disponibil' });
+      return res.status(404).json({ message: 'Product not found or not available' });
     }
 
-    // Creăm o copie a produsului pentru persoana care revendică
-    const {rows: [newFood]} = await db.query(
+    const originalFood = foodResult.rows[0];
+
+    // Create a copy for the claimer
+    const newFoodResult = await db.query(
       `INSERT INTO foods 
-        (user_id, name, expiration_date, is_available, claim_status) 
+        (user_id, name, expiration_date, is_available, is_expired, claim_status, is_claimed_product) 
        VALUES 
-        ($1, $2, $3, false, 'waiting_pickup')
+        ($1, $2, $3, false, false, 'claimed', true)
        RETURNING id`,
-      [claimerId, foodResult.rows[0].name, foodResult.rows[0].expiration_date]
+      [claimerId, originalFood.name, originalFood.expiration_date]
     );
 
-    // Copiem și categoriile produsului
-    const categoryResult = await db.query(
-      `SELECT category_id FROM food_category_relations WHERE food_id = $1`,
+    const newFoodId = newFoodResult.rows[0].id;
+
+    // Copy categories
+    const categoriesResult = await db.query(
+      'SELECT category_id FROM food_category_relations WHERE food_id = $1',
       [foodId]
     );
 
-    for (const row of categoryResult.rows) {
+    for (const row of categoriesResult.rows) {
       await db.query(
         'INSERT INTO food_category_relations (food_id, category_id) VALUES ($1, $2)',
-        [newFood.id, row.category_id]
+        [newFoodId, row.category_id]
       );
     }
 
-    // Actualizăm statusul produsului original
+    // Update original food status
     await db.query(
-      'UPDATE foods SET claim_status = $1 WHERE id = $2',
+      'UPDATE foods SET is_available = false, claim_status = $1 WHERE id = $2',
       ['claimed', foodId]
     );
 
-    // Creăm înregistrarea în tabela claimed_products
+    // Record the claim
     await db.query(
-      `INSERT INTO claimed_products 
-        (food_id, claimed_by, original_owner) 
-       VALUES 
-        ($1, $2, $3)`,
+      'INSERT INTO claimed_products (food_id, claimed_by, original_owner) VALUES ($1, $2, $3)',
       [foodId, claimerId, ownerId]
     );
 
     await db.query('COMMIT');
 
-    // Returnăm datele necesare frontend-ului
     res.json({
-      message: 'Produs revendicat cu succes',
-      ownerContact: {
-        phone: ownerResult.rows[0].phone,
-        address: ownerResult.rows[0].address
-      }
+      message: 'Product claimed successfully',
+      ownerContact
     });
 
   } catch (error) {
     await db.query('ROLLBACK');
-    console.error('Eroare la revendicarea produsului:', error);
-    res.status(500).json({ message: 'Eroare la revendicarea produsului' });
+    console.error('Error claiming product:', error);
+    res.status(500).json({ message: 'Error claiming product' });
   }
 });
 

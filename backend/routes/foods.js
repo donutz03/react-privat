@@ -24,52 +24,61 @@ const getFoodsWithCategories = async (query, params) => {
   }));
 };
 
-// GET /foods/:username - Obține produsele disponibile ale unui utilizator
+// Update the get personal products endpoint in foods.js
 router.get('/:username', async (req, res) => {
   const { username } = req.params;
   
   try {
     const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
     if (userResult.rows.length === 0) {
-      return res.status(404).json({ message: 'Utilizator negăsit' });
+      return res.status(404).json({ message: 'User not found' });
     }
 
     const userId = userResult.rows[0].id;
+
+    // Modified query to exclude claimed products from personal list
     const foods = await getFoodsWithCategories(
-      'WHERE f.user_id = $1 AND is_available = false AND is_expired = false',
+      `WHERE f.user_id = $1 
+       AND is_available = false 
+       AND is_expired = false
+       AND (claim_status = 'unclaimed' OR (claim_status = 'claimed' AND is_claimed_product = true))`,
       [userId]
     );
     
     res.json(foods);
   } catch (error) {
-    console.error('Eroare la obținerea produselor:', error);
-    res.status(500).json({ message: 'Eroare la obținerea produselor' });
+    console.error('Error fetching products:', error);
+    res.status(500).json({ message: 'Error fetching products' });
   }
 });
 
-// GET /foods/unavailable/:username - Obține produsele marcate ca disponibile
+// Update the get unavailable products endpoint
 router.get('/unavailable/:username', async (req, res) => {
   const { username } = req.params;
   
   try {
     const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
     if (userResult.rows.length === 0) {
-      return res.status(404).json({ message: 'Utilizator negăsit' });
+      return res.status(404).json({ message: 'User not found' });
     }
 
     const userId = userResult.rows[0].id;
+
+    // Modified query to exclude claimed products from unavailable list
     const foods = await getFoodsWithCategories(
-      'WHERE f.user_id = $1 AND is_available = true AND is_expired = false',
+      `WHERE f.user_id = $1 
+       AND is_available = true 
+       AND is_expired = false
+       AND claim_status = 'unclaimed'`,
       [userId]
     );
     
     res.json(foods);
   } catch (error) {
-    console.error('Eroare la obținerea produselor disponibile:', error);
-    res.status(500).json({ message: 'Eroare la obținerea produselor disponibile' });
+    console.error('Error fetching unavailable products:', error);
+    res.status(500).json({ message: 'Error fetching unavailable products' });
   }
 });
-
 // GET /foods/expired/:username - Obține produsele expirate
 router.get('/expired/:username', async (req, res) => {
   const { username } = req.params;

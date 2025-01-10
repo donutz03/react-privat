@@ -1,10 +1,22 @@
 import React, { useState, useEffect } from 'react';
 
+const CustomAlert = ({ message, type = 'error' }) => (
+  <div 
+    className={`p-4 mb-4 rounded ${
+      type === 'error' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+    }`}
+  >
+    {message}
+  </div>
+);
+
 const SharedProducts = ({ currentUser, setShowSharedProducts }) => {
   const [sharedProducts, setSharedProducts] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [claimError, setClaimError] = useState('');
   const [expandedProductContacts, setExpandedProductContacts] = useState({});
+  const [claimedProducts, setClaimedProducts] = useState(new Set());
 
   useEffect(() => {
     fetchSharedProducts();
@@ -13,39 +25,24 @@ const SharedProducts = ({ currentUser, setShowSharedProducts }) => {
   const fetchSharedProducts = async () => {
     try {
       const response = await fetch(`http://localhost:5000/friends/${currentUser}/shared-products`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch shared products');
+      }
       const data = await response.json();
       setSharedProducts(data);
       setLoading(false);
     } catch (err) {
-      setError('Eroare la încărcarea produselor împărtășite');
+      console.error('Error fetching shared products:', err);
+      setError('Error loading shared products');
       setLoading(false);
     }
   };
 
-  const toggleProductContact = async (friendUsername, productId) => {
-    try {
-      // If contact details aren't loaded, fetch them
-      if (!expandedProductContacts[`${friendUsername}-${productId}`]) {
-        const response = await fetch(`http://localhost:5000/foods/${friendUsername}/claimed/${productId}`);
-        const contactDetails = await response.json();
-        
-        setExpandedProductContacts(prev => ({
-          ...prev, 
-          [`${friendUsername}-${productId}`]: contactDetails
-        }));
-      } else {
-        // If already loaded, toggle visibility by removing
-        const newContacts = {...expandedProductContacts};
-        delete newContacts[`${friendUsername}-${productId}`];
-        setExpandedProductContacts(newContacts);
-      }
-    } catch (err) {
-      console.error('Eroare la încărcarea detaliilor de contact:', err);
-      setError('Nu s-au putut încărca detaliile de contact');
-    }
-  };
-
   const handleClaimProduct = async (friendUsername, productId) => {
+    if (claimedProducts.has(productId)) {
+      return; // Prevent claiming already claimed products
+    }
+
     try {
       const response = await fetch(`http://localhost:5000/friends/${friendUsername}/claim/${productId}`, {
         method: 'POST',
@@ -56,34 +53,60 @@ const SharedProducts = ({ currentUser, setShowSharedProducts }) => {
       });
 
       const data = await response.json();
-      
-      if (response.ok) {
-        // Reload shared products and show contact details
-        fetchSharedProducts();
-        
-        // Show contact details if available
-        if (data.ownerContact) {
-          setExpandedProductContacts(prev => ({
-            ...prev, 
-            [`${friendUsername}-${productId}`]: data.ownerContact
-          }));
+
+      if (!response.ok) {
+        if (response.status === 409) {
+          setClaimError('This product has already been claimed by someone else');
+          setTimeout(() => setClaimError(''), 3000);
+          // Remove the product from the local state
+          setSharedProducts(prevProducts => {
+            const newProducts = { ...prevProducts };
+            if (newProducts[friendUsername]) {
+              newProducts[friendUsername] = newProducts[friendUsername].filter(p => p.id !== productId);
+              if (newProducts[friendUsername].length === 0) {
+                delete newProducts[friendUsername];
+              }
+            }
+            return newProducts;
+          });
+          return;
         }
-      } else {
-        setError(data.message || 'Eroare la revendicarea produsului');
+        throw new Error(data.message || 'Failed to claim product');
       }
+      
+      // Add to claimed products set
+      setClaimedProducts(prev => new Set([...prev, productId]));
+      
+      // Update contact details if available
+      if (data.ownerContact) {
+        setExpandedProductContacts(prev => ({
+          ...prev,
+          [`${friendUsername}-${productId}`]: data.ownerContact
+        }));
+      }
+
+      // Remove the claimed product from the display
+      setSharedProducts(prevProducts => {
+        const newProducts = { ...prevProducts };
+        if (newProducts[friendUsername]) {
+          newProducts[friendUsername] = newProducts[friendUsername].filter(p => p.id !== productId);
+          if (newProducts[friendUsername].length === 0) {
+            delete newProducts[friendUsername];
+          }
+        }
+        return newProducts;
+      });
+
     } catch (err) {
-      console.error('Eroare la revendicarea produsului:', err);
-      setError('Eroare la revendicarea produsului');
+      console.error('Error claiming product:', err);
+      setError('Error claiming product');
+      setTimeout(() => setError(''), 3000);
     }
   };
 
   if (loading) {
     return (
-      <div style={{ 
-        textAlign: 'center', 
-        padding: '2rem',
-        color: '#666' 
-      }}>
+      <div style={{ textAlign: 'center', padding: '2rem', color: '#666' }}>
         Se încarcă...
       </div>
     );
@@ -97,15 +120,17 @@ const SharedProducts = ({ currentUser, setShowSharedProducts }) => {
         alignItems: 'center',
         marginBottom: '20px' 
       }}>
-        <h2>Produse disponibile de la prieteni</h2>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
+          Produse disponibile de la prieteni
+        </h2>
         <button
           onClick={() => setShowSharedProducts(false)}
           style={{ 
-            padding: '8px 16px', 
-            backgroundColor: '#2196F3', 
-            color: 'white', 
-            border: 'none', 
-            borderRadius: '4px', 
+            padding: '8px 16px',
+            backgroundColor: '#2196F3',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
             cursor: 'pointer'
           }}
         >
@@ -113,20 +138,15 @@ const SharedProducts = ({ currentUser, setShowSharedProducts }) => {
         </button>
       </div>
 
-      {error && (
-        <div style={{ 
-          padding: '1rem',
-          backgroundColor: '#ffebee',
-          color: '#c62828',
-          borderRadius: '4px',
-          marginBottom: '20px'
-        }}>
-          {error}
-        </div>
-      )}
+      {claimError && <CustomAlert message={claimError} />}
+      {error && <CustomAlert message={error} />}
 
       {Object.keys(sharedProducts).length === 0 ? (
-        <p style={{ color: '#666', textAlign: 'center', padding: '2rem' }}>
+        <p style={{ 
+          color: '#666', 
+          textAlign: 'center', 
+          padding: '2rem' 
+        }}>
           Nu există produse disponibile de la prieteni momentan.
         </p>
       ) : (
@@ -136,100 +156,104 @@ const SharedProducts = ({ currentUser, setShowSharedProducts }) => {
               marginBottom: '15px',
               padding: '10px',
               backgroundColor: '#f5f5f5',
-              borderRadius: '4px'
+              borderRadius: '4px',
+              fontSize: '1.2rem',
+              fontWeight: '600'
             }}>
               Produse de la {friend}
             </h3>
             
-            {products.length === 0 ? (
-              <p style={{ color: '#666', padding: '10px' }}>
-                Nu are produse disponibile momentan.
-              </p>
-            ) : (
-              <div style={{ 
-                display: 'grid', 
-                gap: '15px', 
-                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))'
-              }}>
-                {products.map((product) => (
-                  <div
-                    key={product.id}
-                    style={{
-                      padding: '15px',
-                      backgroundColor: '#fff',
-                      borderRadius: '8px',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                      transition: 'transform 0.2s',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <h4 style={{ marginBottom: '8px', color: '#2196F3' }}>
-                      {product.name}
-                    </h4>
-                    <p style={{ 
-                      color: '#666', 
-                      fontSize: '14px', 
-                      marginBottom: '8px' 
-                    }}>
-                      Expiră la: {product.expirationDate}
-                    </p>
-                    <div style={{ 
-                      display: 'flex', 
-                      flexWrap: 'wrap', 
-                      gap: '4px',
-                      marginBottom: '12px'
-                    }}>
-                      {product.categories.map((category) => (
-                        <span
-                          key={`${product.id}-${category}`}
-                          style={{
-                            padding: '4px 8px',
-                            backgroundColor: '#e3f2fd',
-                            borderRadius: '12px',
-                            fontSize: '12px',
-                            color: '#1976d2'
-                          }}
-                        >
-                          {category}
-                        </span>
-                      ))}
-                    </div>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <button
-                        onClick={() => handleClaimProduct(friend, product.id)}
+            <div style={{ 
+              display: 'grid', 
+              gap: '15px',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))'
+            }}>
+              {products.map((product) => (
+                <div
+                  key={product.id}
+                  style={{
+                    padding: '15px',
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    backgroundColor: 'white',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                  }}
+                >
+                  <h4 style={{ 
+                    marginBottom: '8px', 
+                    color: '#2196F3',
+                    fontSize: '1.1rem',
+                    fontWeight: '500'
+                  }}>
+                    {product.name}
+                  </h4>
+                  <p style={{ 
+                    color: '#666', 
+                    fontSize: '0.9rem', 
+                    marginBottom: '8px' 
+                  }}>
+                    Expiră la: {product.expirationDate}
+                  </p>
+                  <div style={{ 
+                    display: 'flex', 
+                    flexWrap: 'wrap', 
+                    gap: '4px',
+                    marginBottom: '12px'
+                  }}>
+                    {product.categories.map((category) => (
+                      <span
+                        key={`${product.id}-${category}`}
                         style={{
-                          flex: 1,
-                          padding: '8px',
-                          backgroundColor: '#4CAF50',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          transition: 'background-color 0.2s'
+                          padding: '4px 8px',
+                          backgroundColor: '#e3f2fd',
+                          borderRadius: '12px',
+                          fontSize: '0.8rem',
+                          color: '#1976d2'
                         }}
                       >
-                        Revendică Produsul
-                      </button>
-                      {expandedProductContacts[`${friend}-${product.id}`] && (
-                        <div 
-                          style={{
-                            backgroundColor: '#e8f5e9',
-                            padding: '10px',
-                            borderRadius: '4px',
-                            marginTop: '10px',
-                            width: '100%'
-                          }}
-                        >
-                          <h4>Detalii Contact</h4>
-                          <p>Telefon: {expandedProductContacts[`${friend}-${product.id}`].phone}</p>
-                          <p>Adresă: {expandedProductContacts[`${friend}-${product.id}`].address}</p>
-                        </div>
-                      )}
-                    </div>
+                        {category}
+                      </span>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
+                  
+                  {!claimedProducts.has(product.id) && (
+                    <button
+                      onClick={() => handleClaimProduct(friend, product.id)}
+                      style={{
+                        width: '100%',
+                        padding: '8px',
+                        backgroundColor: '#4CAF50',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Revendică Produsul
+                    </button>
+                  )}
+
+                  {expandedProductContacts[`${friend}-${product.id}`] && (
+                    <div style={{
+                      marginTop: '12px',
+                      padding: '12px',
+                      backgroundColor: '#e8f5e9',
+                      borderRadius: '4px'
+                    }}>
+                      <h5 style={{ fontWeight: '500', marginBottom: '4px' }}>
+                        Detalii Contact
+                      </h5>
+                      <p style={{ fontSize: '0.9rem' }}>
+                        Telefon: {expandedProductContacts[`${friend}-${product.id}`].phone}
+                      </p>
+                      <p style={{ fontSize: '0.9rem' }}>
+                        Adresă: {expandedProductContacts[`${friend}-${product.id}`].address}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         ))
       )}
