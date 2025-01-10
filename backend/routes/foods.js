@@ -1,27 +1,54 @@
 const express = require('express');
 const router = express.Router();
-const { readFile, writeFile } = require('../utils/fileHelpers');
+const db = require('../database/db');
 const { isNearExpiration } = require('../utils/dateHelpers');
-const config = require('../config/config');
 
-router.get('/:username', (req, res) => {
-  const { username } = req.params;
-  const foods = readFile(config.FILES.foods);
-  
-  if (!foods[username]) {
-    foods[username] = [];
-    writeFile(config.FILES.foods, foods);
-  }
-  
-  const foodsWithStatus = foods[username].map(food => ({
-    ...food,
-    isNearExpiration: isNearExpiration(food.expirationDate)
+// Helper function pentru a obține produsele cu categoriile lor
+const getFoodsWithCategories = async (query, params) => {
+  const result = await db.query(`
+    SELECT f.*, 
+           array_agg(fc.name) as categories 
+    FROM foods f
+    LEFT JOIN food_category_relations fcr ON f.id = fcr.food_id
+    LEFT JOIN food_categories fc ON fcr.category_id = fc.id
+    ${query}
+    GROUP BY f.id
+  `, params);
+
+  return result.rows.map(food => ({
+    id: food.id,
+    name: food.name,
+    expirationDate: food.expiration_date.toISOString().split('T')[0],
+    categories: food.categories.filter(c => c !== null),
+    isNearExpiration: isNearExpiration(food.expiration_date)
   }));
+};
+
+// GET /foods/:username - Obține toate produsele unui utilizator
+router.get('/:username', async (req, res) => {
+  const { username } = req.params;
   
-  res.json(foodsWithStatus);
+  try {
+    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Utilizator negăsit' });
+    }
+
+    const userId = userResult.rows[0].id;
+    const foods = await getFoodsWithCategories(
+      'WHERE f.user_id = $1 AND NOT f.is_available AND NOT f.is_expired',
+      [userId]
+    );
+    
+    res.json(foods);
+  } catch (error) {
+    console.error('Eroare la obținerea produselor:', error);
+    res.status(500).json({ message: 'Eroare la obținerea produselor' });
+  }
 });
 
-router.post('/:username', (req, res) => {
+// POST /foods/:username - Adaugă un produs nou
+router.post('/:username', async (req, res) => {
   const { username } = req.params;
   const { name, expirationDate, categories } = req.body;
 
@@ -31,178 +58,186 @@ router.post('/:username', (req, res) => {
     });
   }
 
-  const foods = readFile(config.FILES.foods);
-  
-  if (!foods[username]) {
-    foods[username] = [];
+  try {
+    await db.query('BEGIN'); // Începem o tranzacție
+
+    // Obținem user ID
+    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      await db.query('ROLLBACK');
+      return res.status(404).json({ message: 'Utilizator negăsit' });
+    }
+    const userId = userResult.rows[0].id;
+
+    // Inserăm produsul
+    const foodResult = await db.query(
+      'INSERT INTO foods (user_id, name, expiration_date) VALUES ($1, $2, $3) RETURNING id',
+      [userId, name, expirationDate]
+    );
+    const foodId = foodResult.rows[0].id;
+
+    // Inserăm relațiile cu categoriile
+    for (const categoryName of categories) {
+      const categoryResult = await db.query(
+        'SELECT id FROM food_categories WHERE name = $1',
+        [categoryName]
+      );
+      const categoryId = categoryResult.rows[0].id;
+      
+      await db.query(
+        'INSERT INTO food_category_relations (food_id, category_id) VALUES ($1, $2)',
+        [foodId, categoryId]
+      );
+    }
+
+    await db.query('COMMIT');
+
+    // Returnăm lista actualizată de produse
+    const updatedFoods = await getFoodsWithCategories(
+      'WHERE f.user_id = $1 AND NOT f.is_available AND NOT f.is_expired',
+      [userId]
+    );
+    res.status(201).json(updatedFoods);
+  } catch (error) {
+    await db.query('ROLLBACK');
+    console.error('Eroare la adăugarea produsului:', error);
+    res.status(500).json({ message: 'Eroare la adăugarea produsului' });
   }
-  
-  foods[username].push({ name, expirationDate, categories });
-  writeFile(config.FILES.foods, foods);
-  
-  const updatedFoods = foods[username].map(food => ({
-    ...food,
-    isNearExpiration: isNearExpiration(food.expirationDate)
-  }));
-  
-  res.status(201).json(updatedFoods);
 });
 
-router.put('/:username/:index', (req, res) => {
-  const { username, index } = req.params;
-  const { name, expirationDate, categories } = req.body;
+// DELETE /foods/:username/:id - Șterge un produs
+router.delete('/:username/:id', async (req, res) => {
+  const { username, id } = req.params;
+  
+  try {
+    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Utilizator negăsit' });
+    }
+    const userId = userResult.rows[0].id;
 
-  if (!name || !expirationDate || !categories || categories.length === 0) {
-    return res.status(400).json({ message: 'Toate câmpurile sunt necesare și trebuie selectată cel puțin o categorie.' });
-  }
+    await db.query('BEGIN');
 
-  const foods = readFile(config.FILES.foods);
-  
-  if (!foods[username]) {
-    return res.status(404).json({ message: 'Utilizatorul nu a fost găsit.' });
+    // Ștergem mai întâi relațiile cu categoriile
+    await db.query('DELETE FROM food_category_relations WHERE food_id = $1', [id]);
+    
+    // Apoi ștergem produsul
+    await db.query(
+      'DELETE FROM foods WHERE id = $1 AND user_id = $2',
+      [id, userId]
+    );
+
+    await db.query('COMMIT');
+
+    // Returnăm lista actualizată
+    const updatedFoods = await getFoodsWithCategories(
+      'WHERE f.user_id = $1 AND NOT f.is_available AND NOT f.is_expired',
+      [userId]
+    );
+    res.json(updatedFoods);
+  } catch (error) {
+    await db.query('ROLLBACK');
+    console.error('Eroare la ștergerea produsului:', error);
+    res.status(500).json({ message: 'Eroare la ștergerea produsului' });
   }
-  
-  const idx = parseInt(index);
-  if (idx < 0 || idx >= foods[username].length) {
-    return res.status(404).json({ message: 'Index invalid.' });
-  }
-  
-  foods[username][idx] = { name, expirationDate, categories };
-  writeFile(config.FILES.foods, foods);
-  
-  res.json(foods[username]);
 });
 
-router.delete('/:username/:index', (req, res) => {
-  const { username, index } = req.params;
-  const foods = readFile(config.FILES.foods);
-  
-  if (!foods[username]) {
-    return res.status(404).json({ message: 'Utilizatorul nu a fost găsit.' });
-  }
-  
-  const idx = parseInt(index);
-  if (idx < 0 || idx >= foods[username].length) {
-    return res.status(404).json({ message: 'Index invalid.' });
-  }
-  
-  foods[username].splice(idx, 1);
-  writeFile(config.FILES.foods, foods);
-  
-  res.json(foods[username]);
-});
-
-router.post('/:username/toggle-availability/:index', (req, res) => {
-  const { username, index } = req.params;
+// PUT /foods/:username/toggle-availability/:id - Modifică disponibilitatea unui produs
+router.post('/:username/toggle-availability/:id', async (req, res) => {
+  const { username, id } = req.params;
   const { makeAvailable } = req.body;
   
-  const foods = readFile(config.FILES.foods);
-  const foodsUnavailable = readFile(config.FILES.foodsUnavailable);
-  
-  if (!foods[username]) foods[username] = [];
-  if (!foodsUnavailable[username]) foodsUnavailable[username] = [];
-  
-  const idx = parseInt(index);
-  let result = {};
-  
-  if (makeAvailable) {
-    if (idx >= 0 && idx < foods[username].length) {
-      const foodToMove = foods[username][idx];
-      foods[username].splice(idx, 1);
-      foodsUnavailable[username].push(foodToMove);
+  try {
+    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Utilizator negăsit' });
     }
-  } else {
-    if (idx >= 0 && idx < foodsUnavailable[username].length) {
-      const foodToMove = foodsUnavailable[username][idx];
-      foodsUnavailable[username].splice(idx, 1);
-      foods[username].push(foodToMove);
-    }
+    const userId = userResult.rows[0].id;
+
+    await db.query(
+      'UPDATE foods SET is_available = $1 WHERE id = $2 AND user_id = $3',
+      [makeAvailable, id, userId]
+    );
+
+    // Returnăm listele actualizate
+    const [available, unavailable] = await Promise.all([
+      getFoodsWithCategories(
+        'WHERE f.user_id = $1 AND NOT f.is_available AND NOT f.is_expired',
+        [userId]
+      ),
+      getFoodsWithCategories(
+        'WHERE f.user_id = $1 AND f.is_available AND NOT f.is_expired',
+        [userId]
+      )
+    ]);
+
+    res.json({
+      available,
+      unavailable
+    });
+  } catch (error) {
+    console.error('Eroare la modificarea disponibilității:', error);
+    res.status(500).json({ message: 'Eroare la modificarea disponibilității' });
   }
-  
-  writeFile(config.FILES.foods, foods);
-  writeFile(config.FILES.foodsUnavailable, foodsUnavailable);
-  
-  result = {
-    available: foods[username].map(food => ({
-      ...food,
-      isNearExpiration: isNearExpiration(food.expirationDate)
-    })),
-    unavailable: foodsUnavailable[username]
-  };
-  
-  res.json(result);
 });
 
-router.get('/unavailable/:username', (req, res) => {
-  const { username } = req.params;
-  const foodsUnavailable = readFile(config.FILES.foodsUnavailable);
-  
-  if (!foodsUnavailable[username]) {
-    foodsUnavailable[username] = [];
-    writeFile(config.FILES.foodsUnavailable, foodsUnavailable);
-  }
-  
-  res.json(foodsUnavailable[username]);
-});
-
-router.delete('/unavailable/:username/:index', (req, res) => {
-  const { username, index } = req.params;
-  const foodsUnavailable = readFile(config.FILES.foodsUnavailable);
-  
-  if (!foodsUnavailable[username]) {
-    return res.status(404).json({ message: 'Utilizatorul nu a fost găsit.' });
-  }
-  
-  const idx = parseInt(index);
-  if (idx < 0 || idx >= foodsUnavailable[username].length) {
-    return res.status(404).json({ message: 'Index invalid.' });
-  }
-  
-  foodsUnavailable[username].splice(idx, 1);
-  writeFile(config.FILES.foodsUnavailable, foodsUnavailable);
-  
-  res.json(foodsUnavailable[username]);
-});
-
-router.put('/unavailable/:username/:index', (req, res) => {
-  const { username, index } = req.params;
+// PUT /foods/:username/:id - Modifică un produs
+router.put('/:username/:id', async (req, res) => {
+  const { username, id } = req.params;
   const { name, expirationDate, categories } = req.body;
 
   if (!name || !expirationDate || !categories || categories.length === 0) {
-    return res.status(400).json({ message: 'Toate câmpurile sunt necesare și trebuie selectată cel puțin o categorie.' });
+    return res.status(400).json({ 
+      message: 'Toate câmpurile sunt necesare și trebuie selectată cel puțin o categorie.' 
+    });
   }
 
-  const foodsUnavailable = readFile(config.FILES.foodsUnavailable);
-  
-  if (!foodsUnavailable[username]) {
-    return res.status(404).json({ message: 'Utilizatorul nu a fost găsit.' });
-  }
-  
-  const idx = parseInt(index);
-  if (idx < 0 || idx >= foodsUnavailable[username].length) {
-    return res.status(404).json({ message: 'Index invalid.' });
-  }
-  
-  foodsUnavailable[username][idx] = { name, expirationDate, categories };
-  writeFile(config.FILES.foodsUnavailable, foodsUnavailable);
-  
-  res.json(foodsUnavailable[username]);
-});
+  try {
+    await db.query('BEGIN');
 
-router.get('/expired/:username', (req, res) => {
-  const { username } = req.params;
-  const expiredProducts = readFile(config.FILES.expiredProducts);
-  res.json(expiredProducts[username] || []);
-});
+    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      await db.query('ROLLBACK');
+      return res.status(404).json({ message: 'Utilizator negăsit' });
+    }
+    const userId = userResult.rows[0].id;
 
-router.delete('/expired/:username', (req, res) => {
-  const { username } = req.params;
-  const expiredProducts = readFile(config.FILES.expiredProducts);
-  
-  expiredProducts[username] = [];
-  writeFile(config.FILES.expiredProducts, expiredProducts);
-  
-  res.json({ message: 'Produse expirate șterse cu succes!' });
+    // Actualizăm produsul
+    await db.query(
+      'UPDATE foods SET name = $1, expiration_date = $2 WHERE id = $3 AND user_id = $4',
+      [name, expirationDate, id, userId]
+    );
+
+    // Ștergem relațiile vechi cu categoriile
+    await db.query('DELETE FROM food_category_relations WHERE food_id = $1', [id]);
+
+    // Adăugăm noile relații cu categoriile
+    for (const categoryName of categories) {
+      const categoryResult = await db.query(
+        'SELECT id FROM food_categories WHERE name = $1',
+        [categoryName]
+      );
+      const categoryId = categoryResult.rows[0].id;
+      
+      await db.query(
+        'INSERT INTO food_category_relations (food_id, category_id) VALUES ($1, $2)',
+        [id, categoryId]
+      );
+    }
+
+    await db.query('COMMIT');
+
+    // Returnăm lista actualizată
+    const updatedFoods = await getFoodsWithCategories(
+      'WHERE f.user_id = $1 AND NOT f.is_available AND NOT f.is_expired',
+      [userId]
+    );
+    res.json(updatedFoods);
+  } catch (error) {
+    await db.query('ROLLBACK');
+    console.error('Eroare la actualizarea produsului:', error);
+    res.status(500).json({ message: 'Eroare la actualizarea produsului' });
+  }
 });
 
 module.exports = router;
