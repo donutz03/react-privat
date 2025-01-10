@@ -1,6 +1,7 @@
 import React from 'react';
 import CategoryCheckboxes from './CategoryCheckboxes';
 import { Image } from 'lucide-react';
+import SocialShare from './SocialShare';
 
 const FoodTable = ({ 
   foods,
@@ -40,6 +41,11 @@ const FoodTable = ({
   };
 
   return (
+    <div>
+      
+    {!isAvailableTable && foods.length > 0 && (
+      <SocialShare foods={foods} />
+    )}
     <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
       <thead>
         <tr>
@@ -218,6 +224,7 @@ const FoodTable = ({
         })}
       </tbody>
     </table>
+    </div>
   );
 };
 
