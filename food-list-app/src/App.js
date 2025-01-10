@@ -40,41 +40,45 @@ function App() {
     }
   }, [currentUser]);
 
-  const loadAllFoods = () => {
-    // Load available foods
-    fetch(`http://localhost:5000/foods/${currentUser}`)
-      .then((res) => res.json())
-      .then((data) => {
-        const sanitizedData = data.map(food => ({
-          ...food,
-          categories: Array.isArray(food.categories) ? food.categories : []
-        }));
-        setPersonalFoods(sanitizedData);
-      })
-      .catch((err) => console.error('Eroare la încărcarea alimentelor:', err));
+  const loadAllFoods = async () => {
+    try {
+      // Load available foods
+      const availableResponse = await fetch(`http://localhost:5000/foods/${currentUser}`);
+      if (!availableResponse.ok) {
+        throw new Error('Eroare la încărcarea produselor disponibile');
+      }
+      const availableData = await availableResponse.json();
+      setPersonalFoods(Array.isArray(availableData) ? availableData : []);
   
-    // Load unavailable foods - FIXED URL
-    fetch(`http://localhost:5000/foods/unavailable/${currentUser}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setSharedFoods(data);
-      })
-      .catch((err) => console.error('Eroare la încărcarea alimentelor indisponibile:', err));
+      // Load unavailable foods
+      const unavailableResponse = await fetch(`http://localhost:5000/foods/unavailable/${currentUser}`);
+      if (!unavailableResponse.ok) {
+        throw new Error('Eroare la încărcarea produselor indisponibile');
+      }
+      const unavailableData = await unavailableResponse.json();
+      setSharedFoods(Array.isArray(unavailableData) ? unavailableData : []);
   
-    // Load expired foods - FIXED URL
-    fetch(`http://localhost:5000/foods/expired/${currentUser}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setExpiredFoods(data);
-      })
-      .catch((err) => console.error('Eroare la încărcarea alimentelor expirate:', err));
+      // Load expired foods
+      const expiredResponse = await fetch(`http://localhost:5000/foods/expired/${currentUser}`);
+      if (!expiredResponse.ok) {
+        throw new Error('Eroare la încărcarea produselor expirate');
+      }
+      const expiredData = await expiredResponse.json();
+      setExpiredFoods(Array.isArray(expiredData) ? expiredData : []);
   
-    fetch('http://localhost:5000/categories')
-      .then((res) => res.json())
-      .then((data) => setAvailableCategories(data))
-      .catch((err) => console.error('Eroare la încărcarea categoriilor:', err));
+      // Load categories
+      const categoriesResponse = await fetch('http://localhost:5000/categories');
+      if (!categoriesResponse.ok) {
+        throw new Error('Eroare la încărcarea categoriilor');
+      }
+      const categoriesData = await categoriesResponse.json();
+      setAvailableCategories(Array.isArray(categoriesData) ? categoriesData : []);
+  
+    } catch (error) {
+      console.error('Eroare la încărcarea datelor:', error);
+      // Aici poți adăuga și un state pentru a afișa eroarea în interfață
+    }
   };
-
   const preventDateTyping = (e) => {
     if (e.key !== 'Tab' && e.key !== 'Enter') {
       e.preventDefault();
