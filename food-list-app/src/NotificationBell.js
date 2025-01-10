@@ -4,9 +4,8 @@ import { Bell } from 'lucide-react';
 const NotificationBell = ({ foods, onMarkAvailable }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   
-  const nearExpirationFoods = foods
-    .map((food, index) => ({ ...food, originalIndex: index }))
-    .filter(food => food.isNearExpiration);
+  // Acum filtrăm direct folosind proprietatea isNearExpiration din backend
+  const nearExpirationFoods = foods.filter(food => food.isNearExpiration);
   
   return (
     <div style={{ position: 'relative' }}>
@@ -52,7 +51,7 @@ const NotificationBell = ({ foods, onMarkAvailable }) => {
         }}>
           <h3>Produse aproape de expirare:</h3>
           {nearExpirationFoods.map((food) => (
-            <div key={food.originalIndex} style={{
+            <div key={food.id} style={{
               padding: '10px',
               borderBottom: '1px solid #eee',
               display: 'flex',
@@ -67,7 +66,7 @@ const NotificationBell = ({ foods, onMarkAvailable }) => {
               </div>
               <button
                 onClick={() => {
-                  onMarkAvailable(food.originalIndex);
+                  onMarkAvailable(food.id); // Folosim ID-ul în loc de index
                   setShowNotifications(false);
                 }}
                 style={{
