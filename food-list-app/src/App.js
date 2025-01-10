@@ -418,29 +418,28 @@ function App() {
       <div>
   <h2>Produsele mele</h2>
   <FoodTable 
-    availableCategories={availableCategories}
-    foods={personalFoods} 
-    isAvailableTable={true}
-    onDelete={deleteFood}
-    editingIndex={editingFoodId}
-    setUnavailableEditingIndex={setEditingFoodId}
-    setAvailableEditingIndex={setAvailableEditingId} // Adăugăm și celălalt setter
-    editFood={editFood}
-    setEditFood={setEditFood}
-    onEditSave={editFoodItem}
-    handleImageChange={handleImageChange}
-    onEditClick={(index, food) => {
-      setEditingFoodId(index);
-      setAvailableEditingId(null); // Resetăm celălalt index
-      setEditFood({
-        name: food.name,
-        expirationDate: food.expirationDate,
-        categories: food.categories
-      });
-    }}
-    handleEditCategoryChange={handleEditCategoryChange}
-    handleMarkAvailability={handleMarkAvailability}
-  />
+  availableCategories={availableCategories}
+  foods={personalFoods} 
+  isAvailableTable={true}
+  onDelete={deleteFood}
+  editingId={editingFoodId}
+  setEditingId={setEditingFoodId}
+  editFood={editFood}
+  setEditFood={setEditFood}
+  onEditSave={editFoodItem}
+  handleImageChange={handleImageChange}
+  onEditClick={(id, food) => {
+    setEditingFoodId(id);
+    setAvailableEditingId(null);
+    setEditFood({
+      name: food.name,
+      expirationDate: food.expirationDate,
+      categories: food.categories
+    });
+  }}
+  handleEditCategoryChange={handleEditCategoryChange}
+  handleMarkAvailability={handleMarkAvailability}
+/>
 </div>
 
 
