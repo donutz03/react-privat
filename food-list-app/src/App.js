@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Login from './components/Login';
 import Register from './components/Register';
 import NotificationBell from './components/NotificationBell';
@@ -10,7 +10,6 @@ import SharedProducts from './components/SharedProducts';
 
 function App() {
   const [showSharedProducts, setShowSharedProducts] = useState(false);
-  const [currentView, setCurrentView] = useState('products'); // poate fi 'products', 'friends' sau 'shared'
   const [personalFoods, setPersonalFoods] = useState([]);
   const [selectedImage, setSelectedImage] = useState(null);
   const [sharedFoods, setSharedFoods] = useState([]);
@@ -38,20 +37,8 @@ function App() {
     return savedUser || null;
   });
   const [showRegister, setShowRegister] = useState(false);
-  useEffect(() => {
-    const loadData = async () => {
-      if (currentUser) {
-        try {
-          await loadAllFoods();
-        } catch (error) {
-          console.error('Error loading initial data:', error);
-        }
-      }
-    };
-    loadData();
-  }, [currentUser]);
 
-  const loadAllFoods = async () => {
+  const loadAllFoods = useCallback(async () => {
     try {
       // Load available foods
       const availableResponse = await fetch(`http://localhost:5000/foods/${currentUser}`);
@@ -87,9 +74,15 @@ function App() {
   
     } catch (error) {
       console.error('Eroare la încărcarea datelor:', error);
-      // Aici poți adăuga și un state pentru a afișa eroarea în interfață
     }
-  };
+  }, [currentUser]);
+  useEffect(() => {
+    if (currentUser) {
+      loadAllFoods();
+    }
+  }, [currentUser, loadAllFoods]);
+
+  
   const preventDateTyping = (e) => {
     if (e.key !== 'Tab' && e.key !== 'Enter') {
       e.preventDefault();
