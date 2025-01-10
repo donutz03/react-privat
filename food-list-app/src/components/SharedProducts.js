@@ -4,7 +4,8 @@ const SharedProducts = ({ currentUser, setShowSharedProducts }) => {
   const [sharedProducts, setSharedProducts] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [ownerContact, setOwnerContact] = useState(null);
+  const [claimedProductId, setClaimedProductId] = useState(null);
 
   useEffect(() => {
     fetchSharedProducts();
@@ -33,8 +34,16 @@ const SharedProducts = ({ currentUser, setShowSharedProducts }) => {
       });
 
       if (response.ok) {
-        // Actualizăm lista după ce produsul a fost revendicat
-        fetchSharedProducts();
+        const data = await response.json();
+        setOwnerContact(data.ownerContact);
+        setClaimedProductId(productId);
+        
+        // Actualizăm lista locală de produse eliminând produsul revendicat
+        const updatedProducts = { ...sharedProducts };
+        updatedProducts[friendUsername] = updatedProducts[friendUsername].filter(
+          product => product.id !== productId
+        );
+        setSharedProducts(updatedProducts);
       } else {
         const errorData = await response.json();
         setError(errorData.message || 'Eroare la revendicarea produsului');
@@ -52,20 +61,6 @@ const SharedProducts = ({ currentUser, setShowSharedProducts }) => {
         color: '#666' 
       }}>
         Se încarcă...
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div style={{ 
-        padding: '1rem',
-        backgroundColor: '#ffebee',
-        color: '#c62828',
-        borderRadius: '4px',
-        margin: '1rem'
-      }}>
-        {error}
       </div>
     );
   }
@@ -93,6 +88,33 @@ const SharedProducts = ({ currentUser, setShowSharedProducts }) => {
           Înapoi la Produse
         </button>
       </div>
+
+      {error && (
+        <div style={{ 
+          padding: '1rem',
+          backgroundColor: '#ffebee',
+          color: '#c62828',
+          borderRadius: '4px',
+          marginBottom: '20px'
+        }}>
+          {error}
+        </div>
+      )}
+
+      {ownerContact && (
+        <div style={{ 
+          padding: '1rem',
+          backgroundColor: '#e8f5e9',
+          color: '#2e7d32',
+          borderRadius: '4px',
+          marginBottom: '20px'
+        }}>
+          <h4 style={{ marginBottom: '8px' }}>Produs revendicat cu succes!</h4>
+          <p>Contactează proprietarul pentru ridicare:</p>
+          <p>Telefon: {ownerContact.phone}</p>
+          <p>Adresă: {ownerContact.address}</p>
+        </div>
+      )}
 
       {Object.keys(sharedProducts).length === 0 ? (
         <p style={{ color: '#666', textAlign: 'center', padding: '2rem' }}>
@@ -129,10 +151,7 @@ const SharedProducts = ({ currentUser, setShowSharedProducts }) => {
                       borderRadius: '8px',
                       boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
                       transition: 'transform 0.2s',
-                      cursor: 'pointer',
-                      ':hover': {
-                        transform: 'translateY(-2px)'
-                      }
+                      cursor: 'pointer'
                     }}
                   >
                     <h4 style={{ marginBottom: '8px', color: '#2196F3' }}>
@@ -151,7 +170,7 @@ const SharedProducts = ({ currentUser, setShowSharedProducts }) => {
                       gap: '4px',
                       marginBottom: '12px'
                     }}>
-                      {product.categories.map((category, idx) => (
+                      {product.categories.map((category) => (
                         <span
                           key={`${product.id}-${category}`}
                           style={{
@@ -168,18 +187,19 @@ const SharedProducts = ({ currentUser, setShowSharedProducts }) => {
                     </div>
                     <button
                       onClick={() => handleClaimProduct(friend, product.id)}
+                      disabled={claimedProductId === product.id}
                       style={{
                         width: '100%',
                         padding: '8px',
-                        backgroundColor: '#4CAF50',
+                        backgroundColor: claimedProductId === product.id ? '#ccc' : '#4CAF50',
                         color: 'white',
                         border: 'none',
                         borderRadius: '4px',
-                        cursor: 'pointer',
+                        cursor: claimedProductId === product.id ? 'not-allowed' : 'pointer',
                         transition: 'background-color 0.2s'
                       }}
                     >
-                      Revendică Produsul
+                      {claimedProductId === product.id ? 'Revendicat' : 'Revendică Produsul'}
                     </button>
                   </div>
                 ))}
