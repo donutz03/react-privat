@@ -6,7 +6,8 @@ const { isNearExpiration } = require('../utils/dateHelpers');
 const getFoodsWithCategories = async (query, params) => {
   const result = await db.query(`
     SELECT f.*, 
-           array_agg(fc.name) as categories 
+           array_agg(fc.name) as categories,
+           to_char(f.expiration_date, 'YYYY-MM-DD') as formatted_date
     FROM foods f
     LEFT JOIN food_category_relations fcr ON f.id = fcr.food_id
     LEFT JOIN food_categories fc ON fcr.category_id = fc.id
@@ -17,9 +18,9 @@ const getFoodsWithCategories = async (query, params) => {
   return result.rows.map(food => ({
     id: food.id,
     name: food.name,
-    expirationDate: food.expiration_date.toISOString().split('T')[0],
+    expirationDate: food.formatted_date,
     categories: food.categories.filter(c => c !== null),
-    isNearExpiration: isNearExpiration(food.expiration_date)
+    isNearExpiration: isNearExpiration(new Date(food.formatted_date))
   }));
 };
 
@@ -116,7 +117,7 @@ router.post('/:username', async (req, res) => {
 
     // Inserăm produsul
     const foodResult = await db.query(
-      'INSERT INTO foods (user_id, name, expiration_date) VALUES ($1, $2, $3) RETURNING id',
+      'INSERT INTO foods (user_id, name, expiration_date) VALUES ($1, $2, $3::date) RETURNING id',
       [userId, name, expirationDate]
     );
     const foodId = foodResult.rows[0].id;

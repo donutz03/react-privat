@@ -132,24 +132,26 @@ function App() {
       alert('Vă rugăm completați toate câmpurile și selectați cel puțin o categorie!');
       return;
     }
-
+  
+    const formData = {
+      name: newFood,
+      expirationDate: expirationDate, // Trimitem data exact cum este selectată
+      categories: selectedCategories
+    };
+  
     fetch(`http://localhost:5000/foods/${currentUser}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: newFood,
-        expirationDate,
-        categories: selectedCategories
-      }),
+      body: JSON.stringify(formData),
     })
-      .then((res) => res.json())
-      .then((data) => {
-        setPersonalFoods(data);
-        setNewFood('');
-        setExpirationDate('');
-        setSelectedCategories([]);
-      })
-      .catch((err) => console.error('Eroare la adăugare:', err));
+    .then((res) => res.json())
+    .then((data) => {
+      setPersonalFoods(data);
+      setNewFood('');
+      setExpirationDate('');
+      setSelectedCategories([]);
+    })
+    .catch((err) => console.error('Eroare la adăugare:', err));
   };
   const deleteFood = (foodId) => {  // Modificat din index
     fetch(`http://localhost:5000/foods/${currentUser}/${foodId}`, {
