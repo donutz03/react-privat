@@ -175,6 +175,73 @@ router.get('/unavailable/:username', async (req, res) => {
     res.status(500).json({ message: 'Error fetching unavailable products' });
   }
 });
+
+// Adaugă acest endpoint în foods.js
+router.put('/unavailable/:username/:id', upload.single('image'), async (req, res) => {
+  const { username, id } = req.params;
+  const { name, expirationDate, categories } = req.body;
+
+  if (!name || !expirationDate || !categories || categories.length === 0) {
+    return res.status(400).json({ 
+      message: 'Toate câmpurile sunt necesare și trebuie selectată cel puțin o categorie.' 
+    });
+  }
+
+  try {
+    await db.query('BEGIN');
+
+    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      await db.query('ROLLBACK');
+      return res.status(404).json({ message: 'Utilizator negăsit' });
+    }
+    const userId = userResult.rows[0].id;
+
+    // Actualizăm produsul, inclusiv imaginea dacă există
+    if (req.file) {
+      await db.query(
+        'UPDATE foods SET name = $1, expiration_date = $2, image_data = $3, image_type = $4 WHERE id = $5 AND user_id = $6 AND is_available = true',
+        [name, expirationDate, req.file.buffer, req.file.mimetype, id, userId]
+      );
+    } else {
+      await db.query(
+        'UPDATE foods SET name = $1, expiration_date = $2 WHERE id = $3 AND user_id = $4 AND is_available = true',
+        [name, expirationDate, id, userId]
+      );
+    }
+
+    // Ștergem relațiile vechi cu categoriile
+    await db.query('DELETE FROM food_category_relations WHERE food_id = $1', [id]);
+
+    // Adăugăm noile relații cu categoriile
+    const categoriesArray = Array.isArray(categories) ? categories : JSON.parse(categories);
+    for (const categoryName of categoriesArray) {
+      const categoryResult = await db.query(
+        'SELECT id FROM food_categories WHERE name = $1',
+        [categoryName]
+      );
+      const categoryId = categoryResult.rows[0].id;
+      
+      await db.query(
+        'INSERT INTO food_category_relations (food_id, category_id) VALUES ($1, $2)',
+        [id, categoryId]
+      );
+    }
+
+    await db.query('COMMIT');
+
+    // Returnăm lista actualizată de produse disponibile
+    const updatedFoods = await getFoodsWithCategories(
+      'WHERE f.user_id = $1 AND f.is_available = true AND NOT f.is_expired',
+      [userId]
+    );
+    res.json(updatedFoods);
+  } catch (error) {
+    await db.query('ROLLBACK');
+    console.error('Eroare la actualizarea produsului disponibil:', error);
+    res.status(500).json({ message: 'Eroare la actualizarea produsului' });
+  }
+});
 // GET /foods/expired/:username - Obține produsele expirate
 router.get('/expired/:username', async (req, res) => {
   const { username } = req.params;

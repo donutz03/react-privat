@@ -204,22 +204,30 @@ function App() {
       .catch((err) => console.error('Eroare la ștergere:', err));
   };
 
-  const editUnavailableFoodItem = (foodId) => {  // Modificat din index
+  const editUnavailableFoodItem = (foodId) => {
     if (!editFood.name || !editFood.expirationDate || editFood.categories.length === 0) {
       alert('Vă rugăm completați toate câmpurile și selectați cel puțin o categorie!');
       return;
     }
-
+  
+    const formData = new FormData();
+    formData.append('name', editFood.name);
+    formData.append('expirationDate', editFood.expirationDate);
+    formData.append('categories', JSON.stringify(editFood.categories));
+    
+    if (editFood.image) {
+      formData.append('image', editFood.image);
+    }
+  
     fetch(`http://localhost:5000/foods/unavailable/${currentUser}/${foodId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(editFood),
+      body: formData
     })
       .then((res) => res.json())
       .then((data) => {
         setSharedFoods(data);
         setAvailableEditingId(null);
-        setEditFood({ name: '', expirationDate: '', categories: [] });
+        setEditFood({ name: '', expirationDate: '', categories: [], image: null });
       })
       .catch((err) => console.error('Eroare la editare:', err));
   };
