@@ -19,6 +19,7 @@ const upload = multer({
   }
 });
 
+// În foods.js, funcția POST
 router.post('/:username', upload.single('image'), async (req, res) => {
   const { username } = req.params;
   const { name, expirationDate, categories } = req.body;
@@ -69,12 +70,15 @@ router.post('/:username', upload.single('image'), async (req, res) => {
 
     await db.query('COMMIT');
 
-    // Returnăm lista actualizată
+    // Returnăm lista actualizată folosind getFoodsWithCategories
     const updatedFoods = await getFoodsWithCategories(
       'WHERE f.user_id = $1 AND NOT f.is_available AND NOT f.is_expired',
       [userId]
     );
-    res.status(201).json(updatedFoods);
+
+    // Verificăm că returnăm un array
+    res.status(201).json(Array.isArray(updatedFoods) ? updatedFoods : []);
+
   } catch (error) {
     await db.query('ROLLBACK');
     console.error('Eroare la adăugarea produsului:', error);
