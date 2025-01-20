@@ -4,7 +4,6 @@
 // AppRouter.js
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import App from './App';
 import Login from './components/Login';
 import Register from './components/Register';
 import Dashboard from './components/Dashboard';
