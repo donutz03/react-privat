@@ -55,41 +55,6 @@ router.post('/check-expired/:username', async (req, res) => {
 });
 
 // 2. Rută pentru ștergerea unui produs expirat specific
-router.delete('/expired/:username/:id', async (req, res) => {
-  const { username, id } = req.params;
-  
-  try {
-    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ message: 'Utilizator negăsit' });
-    }
-    const userId = userResult.rows[0].id;
-
-    await db.query('BEGIN');
-    
-    await db.query('DELETE FROM food_category_relations WHERE food_id = $1', [id]);
-    
-    await db.query(
-      'DELETE FROM foods WHERE id = $1 AND user_id = $2 AND is_expired = true',
-      [id, userId]
-    );
-
-    await db.query('COMMIT');
-
-    const expiredProducts = await getFoodsWithCategories(
-      'WHERE f.user_id = $1 AND f.is_expired = true',
-      [userId]
-    );
-
-    res.json(expiredProducts);
-  } catch (error) {
-    await db.query('ROLLBACK');
-    console.error('Eroare la ștergerea produsului expirat:', error);
-    res.status(500).json({ message: 'Eroare la ștergerea produsului' });
-  }
-});
-
-// 3. Rută pentru ștergerea tuturor produselor expirate ale unui utilizator
 router.delete('/expired/:username', async (req, res) => {
   const { username } = req.params;
   
@@ -102,6 +67,15 @@ router.delete('/expired/:username', async (req, res) => {
 
     await db.query('BEGIN');
 
+    // 1. Mai întâi ștergem înregistrările din claimed_products
+    await db.query(`
+      DELETE FROM claimed_products 
+      WHERE food_id IN (
+        SELECT id FROM foods 
+        WHERE user_id = $1 AND is_expired = true
+      )`, [userId]);
+
+    // 2. Apoi ștergem relațiile cu categoriile
     await db.query(`
       DELETE FROM food_category_relations 
       WHERE food_id IN (
@@ -109,14 +83,14 @@ router.delete('/expired/:username', async (req, res) => {
         WHERE user_id = $1 AND is_expired = true
       )`, [userId]);
     
+    // 3. În final ștergem produsele expirate
     await db.query(
       'DELETE FROM foods WHERE user_id = $1 AND is_expired = true',
       [userId]
     );
 
     await db.query('COMMIT');
-
-    res.json([]); // Returnăm array gol pentru că am șters toate produsele expirate
+    res.json([]); // Returnăm array gol după ștergere
   } catch (error) {
     await db.query('ROLLBACK');
     console.error('Eroare la ștergerea produselor expirate:', error);
@@ -124,6 +98,46 @@ router.delete('/expired/:username', async (req, res) => {
   }
 });
 
+// Actualizăm și ruta pentru ștergerea unui singur produs expirat
+router.delete('/expired/:username/:id', async (req, res) => {
+  const { username, id } = req.params;
+  
+  try {
+    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Utilizator negăsit' });
+    }
+    const userId = userResult.rows[0].id;
+
+    await db.query('BEGIN');
+
+    // 1. Mai întâi ștergem înregistrarea din claimed_products
+    await db.query('DELETE FROM claimed_products WHERE food_id = $1', [id]);
+    
+    // 2. Apoi ștergem relațiile cu categoriile
+    await db.query('DELETE FROM food_category_relations WHERE food_id = $1', [id]);
+    
+    // 3. În final ștergem produsul expirat
+    await db.query(
+      'DELETE FROM foods WHERE id = $1 AND user_id = $2 AND is_expired = true',
+      [id, userId]
+    );
+
+    await db.query('COMMIT');
+
+    // Returnăm lista actualizată de produse expirate
+    const expiredProducts = await getFoodsWithCategories(
+      'WHERE f.user_id = $1 AND f.is_expired = true',
+      [userId]
+    );
+
+    res.json(expiredProducts);
+  } catch (error) {
+    await db.query('ROLLBACK');
+    console.error('Eroare la ștergerea produsului expirat:', error);
+    res.status(500).json({ message: 'Eroare la ștergerea produsului' });
+  }
+});
 // 4. Rută pentru obținerea produselor expirate
 router.get('/expired/:username', async (req, res) => {
   const { username } = req.params;
