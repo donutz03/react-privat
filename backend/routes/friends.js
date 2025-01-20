@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
+const { format } = require('date-fns');
 
 // GET /friends/tags - Obține toate tag-urile disponibile
 router.get('/tags', async (req, res) => {
@@ -598,30 +599,30 @@ router.get('/:username/shared-products', async (req, res) => {
 
     // This query gets shared products with their images and other details
     const sharedProductsQuery = `
-      SELECT 
+      SELECT
         u.username as friend_username,
         f.id,
         f.name,
         f.expiration_date,
-        CASE 
-          WHEN f.image_data IS NOT NULL 
-          THEN concat('/foods/image/', f.id::text)
-          ELSE NULL 
-        END as image_url,
+        CASE
+          WHEN f.image_data IS NOT NULL
+            THEN concat('/foods/image/', f.id::text)
+          ELSE NULL
+          END as image_url,
         array_agg(DISTINCT fc.name) as categories
       FROM users u
-      JOIN shared_list_access sla ON u.id = sla.user_id
-      JOIN foods f ON u.id = f.user_id
-      LEFT JOIN food_category_relations fcr ON f.id = fcr.food_id
-      LEFT JOIN food_categories fc ON fcr.category_id = fc.id
+             JOIN shared_list_access sla ON u.id = sla.user_id
+             JOIN foods f ON u.id = f.user_id
+             LEFT JOIN food_category_relations fcr ON f.id = fcr.food_id
+             LEFT JOIN food_categories fc ON fcr.category_id = fc.id
       WHERE sla.viewer_id = $1
         AND f.is_available = true
         AND f.is_expired = false
         AND f.image_data IS NOT NULL  -- Only get products with images
-      GROUP BY 
-        u.username, 
-        f.id, 
-        f.name, 
+      GROUP BY
+        u.username,
+        f.id,
+        f.name,
         f.expiration_date,
         f.image_data
       ORDER BY u.username, f.expiration_date
@@ -635,16 +636,16 @@ router.get('/:username/shared-products', async (req, res) => {
       if (!acc[row.friend_username]) {
         acc[row.friend_username] = [];
       }
-      
+
       // Add the product to the friend's array
       acc[row.friend_username].push({
         id: row.id,
         name: row.name,
-        expirationDate: row.expiration_date.toISOString().split('T')[0],
+        expirationDate: format(new Date(row.expiration_date), 'yyyy-MM-dd'), // Use date-fns to format the date
         imageUrl: row.image_url,  // Include the image URL
         categories: row.categories.filter(c => c !== null)
       });
-      
+
       return acc;
     }, {});
 
@@ -654,7 +655,6 @@ router.get('/:username/shared-products', async (req, res) => {
     res.status(500).json({ message: 'Eroare la obținerea produselor partajate' });
   }
 });
-
 router.post('/:ownerUsername/claim/:foodId', async (req, res) => {
   const { ownerUsername, foodId } = req.params;
   const { claimedBy } = req.body;
