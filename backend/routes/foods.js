@@ -583,4 +583,16 @@ router.get('/:ownerUsername/claimed/:foodId', async (req, res) => {
     res.status(500).json({ message: 'Eroare la obținerea detaliilor' });
   }
 });
+
+router.post('/check-expired/:username', async (req, res) => {
+  const { username } = req.params;
+
+  try {
+    const expiredProducts = await moveExpiredProducts(username);
+    res.json({ message: 'Verificare completă', expiredProducts });
+  } catch (error) {
+    console.error('Eroare la verificarea produselor expirate:', error);
+    res.status(500).json({ message: 'Eroare la verificarea produselor expirate' });
+  }
+});
 module.exports = router;

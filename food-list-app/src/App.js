@@ -38,6 +38,33 @@ function App() {
   });
   const [showRegister, setShowRegister] = useState(false);
 
+  const checkExpiredProducts = useCallback(async () => {
+    if (!currentUser) return;
+    
+    try {
+      // Verifică produsele expirate
+      const response = await fetch(`http://localhost:5000/foods/check-expired/${currentUser}`, {
+        method: 'POST'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Eroare la verificarea produselor expirate');
+      }
+      
+      // Reîncarcă toate listele
+      loadAllFoods();
+    } catch (error) {
+      console.error('Eroare la verificarea produselor expirate:', error);
+    }
+  }, [currentUser, loadAllFoods]);
+  
+  // Efectul care se execută la încărcarea paginii
+  useEffect(() => {
+    if (currentUser) {
+      checkExpiredProducts();
+    }
+  }, [currentUser, checkExpiredProducts]);
+
   const loadAllFoods = useCallback(async () => {
     try {
       // Load available foods
