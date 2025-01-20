@@ -1,8 +1,8 @@
-// SharedProducts.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ExpandableImage from './ExpandableImage';
 
-// Custom Alert Component for notifications
+// Custom Alert Component for notifications remains the same
 const CustomAlert = ({ message, type = 'error' }) => (
   <div 
     className={`p-4 mb-4 rounded ${
@@ -13,7 +13,7 @@ const CustomAlert = ({ message, type = 'error' }) => (
   </div>
 );
 
-// Product Card Component for displaying individual products
+// Updated ProductCard Component with image support
 const ProductCard = ({ product, onClaim, friendUsername }) => (
   <div
     style={{
@@ -24,6 +24,30 @@ const ProductCard = ({ product, onClaim, friendUsername }) => (
       boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
     }}
   >
+    {/* Image Section */}
+    <div style={{ marginBottom: '12px' }}>
+      {product.imageUrl ? (
+        <ExpandableImage
+          src={`http://localhost:5000${product.imageUrl}`}
+          alt={product.name}
+          className="w-full h-48 object-cover rounded-lg"
+        />
+      ) : (
+        <div style={{
+          width: '100%',
+          height: '192px', // equivalent to h-48
+          backgroundColor: '#f5f5f5',
+          borderRadius: '8px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <span style={{ color: '#999' }}>Fără imagine</span>
+        </div>
+      )}
+    </div>
+
+    {/* Product Details */}
     <h4 style={{ 
       marginBottom: '8px', 
       color: '#2196F3',
@@ -32,6 +56,7 @@ const ProductCard = ({ product, onClaim, friendUsername }) => (
     }}>
       {product.name}
     </h4>
+    
     <p style={{ 
       color: '#666', 
       fontSize: '0.9rem', 
@@ -39,6 +64,7 @@ const ProductCard = ({ product, onClaim, friendUsername }) => (
     }}>
       Expiră la: {product.expirationDate}
     </p>
+    
     <div style={{ 
       display: 'flex', 
       flexWrap: 'wrap', 
@@ -60,6 +86,8 @@ const ProductCard = ({ product, onClaim, friendUsername }) => (
         </span>
       ))}
     </div>
+
+    {/* Claim Button */}
     <button
       onClick={() => onClaim(friendUsername, product.id)}
       style={{
@@ -69,13 +97,18 @@ const ProductCard = ({ product, onClaim, friendUsername }) => (
         color: 'white',
         border: 'none',
         borderRadius: '4px',
-        cursor: 'pointer'
+        cursor: 'pointer',
+        transition: 'background-color 0.2s',
       }}
+      onMouseOver={(e) => e.target.style.backgroundColor = '#45a049'}
+      onMouseOut={(e) => e.target.style.backgroundColor = '#4CAF50'}
     >
       Revendică Produsul
     </button>
   </div>
 );
+
+// Main SharedProducts Component
 const SharedProducts = () => {
   const navigate = useNavigate();
   const currentUser = localStorage.getItem('currentUser');
@@ -85,10 +118,8 @@ const SharedProducts = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [claimError, setClaimError] = useState('');
-  const [expandedProductContacts, setExpandedProductContacts] = useState({});
   const [claimedProducts, setClaimedProducts] = useState(new Set());
 
-  // Authentication and initial data load
   useEffect(() => {
     if (!currentUser) {
       navigate('/login');
@@ -97,7 +128,6 @@ const SharedProducts = () => {
     }
   }, [currentUser, navigate]);
 
-  // Fetch shared products data
   const fetchSharedProducts = async () => {
     try {
       const response = await fetch(`http://localhost:5000/friends/${currentUser}/shared-products`);
@@ -114,7 +144,6 @@ const SharedProducts = () => {
     }
   };
 
-  // Handle product claiming
   const handleClaimProduct = async (friendUsername, productId) => {
     try {
       const response = await fetch(`http://localhost:5000/friends/${friendUsername}/claim/${productId}`, {
@@ -129,7 +158,6 @@ const SharedProducts = () => {
         throw new Error('Failed to claim product');
       }
 
-      // Update local state to remove claimed product
       setSharedProducts(prevProducts => {
         const newProducts = { ...prevProducts };
         if (newProducts[friendUsername]) {
@@ -141,10 +169,7 @@ const SharedProducts = () => {
         return newProducts;
       });
 
-      // Mark product as claimed
       setClaimedProducts(prev => new Set([...prev, productId]));
-
-      // Optionally refresh the full list
       fetchSharedProducts();
 
     } catch (err) {
@@ -154,7 +179,6 @@ const SharedProducts = () => {
     }
   };
 
-  // Loading state
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: '2rem', color: '#666' }}>
@@ -162,7 +186,7 @@ const SharedProducts = () => {
       </div>
     );
   }
-  // Main render method
+
   return (
     <div style={{ padding: '20px' }}>
       {/* Header Section */}
@@ -194,7 +218,7 @@ const SharedProducts = () => {
       {claimError && <CustomAlert message={claimError} />}
       {error && <CustomAlert message={error} />}
 
-      {/* No Products Message */}
+      {/* Products Grid */}
       {Object.keys(sharedProducts).length === 0 ? (
         <p style={{ 
           color: '#666', 
@@ -204,7 +228,6 @@ const SharedProducts = () => {
           Nu există produse disponibile de la prieteni momentan.
         </p>
       ) : (
-        // Products Grid by Friend
         Object.entries(sharedProducts).map(([friend, products]) => (
           <div key={friend} style={{ marginBottom: '30px' }}>
             <h3 style={{ 
@@ -220,8 +243,8 @@ const SharedProducts = () => {
             
             <div style={{ 
               display: 'grid', 
-              gap: '15px',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))'
+              gap: '20px',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))'
             }}>
               {products.map((product) => (
                 <ProductCard

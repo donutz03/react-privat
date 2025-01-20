@@ -582,24 +582,33 @@ router.get('/:username/filter', async (req, res) => {
   }
 });
 
-// GET /friends/:username/shared-products - Obține produsele partajate de prieteni
+// In friends.js
+
+// GET /friends/:username/shared-products endpoint
 router.get('/:username/shared-products', async (req, res) => {
   const { username } = req.params;
 
   try {
+    // First get the user's ID
     const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
     if (userResult.rows.length === 0) {
       return res.status(404).json({ message: 'Utilizator negăsit' });
     }
     const userId = userResult.rows[0].id;
 
+    // This query gets shared products with their images and other details
     const sharedProductsQuery = `
       SELECT 
         u.username as friend_username,
         f.id,
         f.name,
         f.expiration_date,
-        array_agg(fc.name) as categories
+        CASE 
+          WHEN f.image_data IS NOT NULL 
+          THEN concat('/foods/image/', f.id::text)
+          ELSE NULL 
+        END as image_url,
+        array_agg(DISTINCT fc.name) as categories
       FROM users u
       JOIN shared_list_access sla ON u.id = sla.user_id
       JOIN foods f ON u.id = f.user_id
@@ -608,23 +617,34 @@ router.get('/:username/shared-products', async (req, res) => {
       WHERE sla.viewer_id = $1
         AND f.is_available = true
         AND f.is_expired = false
-      GROUP BY u.username, f.id, f.name, f.expiration_date
+        AND f.image_data IS NOT NULL  -- Only get products with images
+      GROUP BY 
+        u.username, 
+        f.id, 
+        f.name, 
+        f.expiration_date,
+        f.image_data
       ORDER BY u.username, f.expiration_date
     `;
 
     const result = await db.query(sharedProductsQuery, [userId]);
 
-    // Organizăm produsele pe prieteni
+    // Transform the results into an organized structure by friend
     const sharedProducts = result.rows.reduce((acc, row) => {
+      // If this is the first product for this friend, create their array
       if (!acc[row.friend_username]) {
         acc[row.friend_username] = [];
       }
+      
+      // Add the product to the friend's array
       acc[row.friend_username].push({
         id: row.id,
         name: row.name,
         expirationDate: row.expiration_date.toISOString().split('T')[0],
+        imageUrl: row.image_url,  // Include the image URL
         categories: row.categories.filter(c => c !== null)
       });
+      
       return acc;
     }, {});
 
@@ -634,7 +654,7 @@ router.get('/:username/shared-products', async (req, res) => {
     res.status(500).json({ message: 'Eroare la obținerea produselor partajate' });
   }
 });
-// In friends.js - Simplified claim endpoint
+
 router.post('/:ownerUsername/claim/:foodId', async (req, res) => {
   const { ownerUsername, foodId } = req.params;
   const { claimedBy } = req.body;
