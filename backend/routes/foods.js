@@ -579,4 +579,41 @@ router.get('/:ownerUsername/claimed/:foodId', async (req, res) => {
     res.status(500).json({ message: 'Eroare la obținerea detaliilor' });
   }
 });
+
+// DELETE /foods/unavailable/:username/:id - Șterge un produs indisponibil
+router.delete('/unavailable/:username/:id', async (req, res) => {
+  const { username, id } = req.params;
+
+  try {
+    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Utilizator negăsit' });
+    }
+    const userId = userResult.rows[0].id;
+
+    await db.query('BEGIN');
+
+    // Ștergem mai întâi relațiile cu categoriile
+    await db.query('DELETE FROM food_category_relations WHERE food_id = $1', [id]);
+
+    // Apoi ștergem produsul
+    await db.query(
+      'DELETE FROM foods WHERE id = $1 AND user_id = $2 AND is_available = true',
+      [id, userId]
+    );
+
+    await db.query('COMMIT');
+
+    // Returnăm lista actualizată de produse indisponibile
+    const updatedFoods = await getFoodsWithCategories(
+      'WHERE f.user_id = $1 AND f.is_available = true AND NOT f.is_expired',
+      [userId]
+    );
+    res.json(updatedFoods);
+  } catch (error) {
+    await db.query('ROLLBACK');
+    console.error('Eroare la ștergerea produsului indisponibil:', error);
+    res.status(500).json({ message: 'Eroare la ștergerea produsului indisponibil' });
+  }
+});
 module.exports = router;
