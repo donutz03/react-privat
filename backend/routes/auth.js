@@ -43,7 +43,7 @@ router.post('/login', async (req, res) => {
   }
 
   try {
-    // Verificăm credențialele și includem și informațiile de contact
+    // Verificăm credențialele
     const result = await db.query(
       'SELECT id, username, phone, address FROM users WHERE username = $1 AND password = $2',
       [username, password]
@@ -53,7 +53,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Credențiale invalide!' });
     }
 
-    // Obținem produsele expirate
+    // Verificăm și mutăm produsele expirate
     const products = await moveExpiredProducts(username);
 
     res.json({ 
