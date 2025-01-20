@@ -18,6 +18,8 @@ const FoodTable = ({
   handleMarkAvailability,
   handleImageChange
 }) => {
+  const safefoods = Array.isArray(foods) ? foods : [];
+
   const today = new Date().toISOString().split('T')[0];
   
   const preventDateTyping = (e) => {
@@ -43,8 +45,8 @@ const FoodTable = ({
   return (
     <div>
       
-    {!isAvailableTable && foods.length > 0 && (
-      <SocialShare foods={foods} />
+    {!isAvailableTable && safefoods.length > 0 && (
+      <SocialShare foods={safefoods} />
     )}
     <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
       <thead>
@@ -57,7 +59,7 @@ const FoodTable = ({
         </tr>
       </thead>
       <tbody>
-        {foods.map((food) => {
+        {safefoods.map((food) => {
           const isEditing = editingId === food.id;
           return (
             <tr key={food.id}>
