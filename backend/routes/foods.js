@@ -671,4 +671,42 @@ router.get('/expired/:username', async (req, res) => {
     res.status(500).json({ message: 'Eroare la obținerea produselor expirate' });
   }
 });
+
+// În foods.js, adaugă această rută pentru ștergerea tuturor produselor expirate
+router.delete('/expired/:username', async (req, res) => {
+  const { username } = req.params;
+  
+  try {
+    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Utilizator negăsit' });
+    }
+    const userId = userResult.rows[0].id;
+
+    await db.query('BEGIN');
+
+    // Ștergem mai întâi relațiile cu categoriile pentru toate produsele expirate
+    await db.query(`
+      DELETE FROM food_category_relations 
+      WHERE food_id IN (
+        SELECT id FROM foods 
+        WHERE user_id = $1 AND is_expired = true
+      )`, [userId]);
+    
+    // Apoi ștergem produsele expirate
+    await db.query(
+      'DELETE FROM foods WHERE user_id = $1 AND is_expired = true',
+      [userId]
+    );
+
+    await db.query('COMMIT');
+
+    // Returnăm un array gol pentru că am șters toate produsele expirate
+    res.json([]);
+  } catch (error) {
+    await db.query('ROLLBACK');
+    console.error('Eroare la ștergerea produselor expirate:', error);
+    res.status(500).json({ message: 'Eroare la ștergerea produselor expirate' });
+  }
+});
 module.exports = router;
