@@ -138,8 +138,8 @@ function Dashboard() {
   // Add food functionality
   const addFood = () => {
     // Validation check
-    if (!newFood || !expirationDate || selectedCategories.length === 0) {
-      alert('Vă rugăm completați toate câmpurile obligatorii!');
+    if (!newFood || !expirationDate || selectedCategories.length === 0 || !selectedImage) {      
+        alert('Vă rugăm completați toate câmpurile obligatorii!');
       return;
     }
   
