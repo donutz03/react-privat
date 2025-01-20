@@ -3,8 +3,9 @@ import { Bell } from 'lucide-react';
 
 const NotificationBell = ({ foods, onMarkAvailable }) => {
   const [showNotifications, setShowNotifications] = useState(false);
-  
-  const nearExpirationFoods = foods.filter(food => food.isNearExpiration);
+  const safefoods = Array.isArray(foods) ? foods : [];
+
+  const nearExpirationFoods = safefoods.filter(food => food.isNearExpiration);
   
   return (
     <div style={{ position: 'relative' }}>

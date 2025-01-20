@@ -143,13 +143,21 @@ function App() {
     })
     .then((res) => res.json())
     .then((data) => {
-      setPersonalFoods(data);
-      setNewFood('');
-      setExpirationDate('');
-      setSelectedCategories([]);
-      setSelectedImage(null);
+      if (Array.isArray(data)) {
+        setPersonalFoods(data);
+        setNewFood('');
+        setExpirationDate('');
+        setSelectedCategories([]);
+        setSelectedImage(null);
+      } else {
+        console.error('Received non-array response:', data);
+        setPersonalFoods([]);
+      }
     })
-    .catch((err) => console.error('Eroare la adăugare:', err));
+    .catch((err) => {
+      console.error('Eroare la adăugare:', err);
+      setPersonalFoods([]);
+    });
   };
   const deleteFood = (foodId) => {  // Modificat din index
     fetch(`http://localhost:5000/foods/${currentUser}/${foodId}`, {
