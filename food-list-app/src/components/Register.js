@@ -1,10 +1,11 @@
-
 import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 
-function Register({ onRegisterSuccess }) {
+function Register() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -25,7 +26,7 @@ function Register({ onRegisterSuccess }) {
       
       if (response.ok) {
         alert('Cont creat cu succes!');
-        onRegisterSuccess();
+        navigate('/login');
       } else {
         alert(data.message || 'Eroare la înregistrare');
       }
@@ -74,8 +75,11 @@ function Register({ onRegisterSuccess }) {
           Înregistrare
         </button>
       </form>
+      <div style={{ marginTop: '20px', textAlign: 'center' }}>
+        <Link to="/login" style={{ color: '#2196F3', textDecoration: 'none' }}>
+          Ai deja cont? Autentifică-te aici
+        </Link>
+      </div>
     </div>
   );
 }
-
-export default Register;

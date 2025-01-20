@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 
-function Login({ onLogin }) {
+function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -16,14 +18,12 @@ function Login({ onLogin }) {
       const data = await response.json();
       
       if (response.ok) {
-        // First store the user data
         localStorage.setItem('currentUser', username);
         localStorage.setItem('userContact', JSON.stringify({
           phone: data.user?.phone,
           address: data.user?.address
         }));
-        // Then call onLogin
-        onLogin(username);
+        navigate('/');
       } else {
         alert(data.message || 'Eroare la autentificare');
       }
@@ -65,8 +65,11 @@ function Login({ onLogin }) {
           Autentificare
         </button>
       </form>
+      <div style={{ marginTop: '20px', textAlign: 'center' }}>
+        <Link to="/register" style={{ color: '#2196F3', textDecoration: 'none' }}>
+          Nu ai cont? Înregistrează-te aici
+        </Link>
+      </div>
     </div>
   );
 }
-
-export default Login;
