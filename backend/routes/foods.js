@@ -19,6 +19,148 @@ const upload = multer({
   }
 });
 
+
+router.post('/check-expired/:username', async (req, res) => {
+  const { username } = req.params;
+
+  try {
+    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Utilizator negăsit' });
+    }
+
+    const currentDate = new Date().toISOString().split('T')[0];
+    const userId = userResult.rows[0].id;
+
+    await db.query(
+      `UPDATE foods 
+       SET is_expired = true, is_available = false 
+       WHERE user_id = $1 
+       AND expiration_date < $2 
+       AND is_expired = false`,
+      [userId, currentDate]
+    );
+
+    const expiredProducts = await getFoodsWithCategories(
+      'WHERE f.user_id = $1 AND f.is_expired = true',
+      [userId]
+    );
+
+    res.json({ message: 'Verificare completă', expiredProducts });
+  } catch (error) {
+    console.error('Eroare la verificarea produselor expirate:', error);
+    res.status(500).json({ message: 'Eroare la verificarea produselor expirate' });
+  }
+});
+
+// 2. Rută pentru ștergerea unui produs expirat specific
+router.delete('/expired/:username', async (req, res) => {
+  const { username } = req.params;
+  
+  try {
+    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Utilizator negăsit' });
+    }
+    const userId = userResult.rows[0].id;
+
+    await db.query('BEGIN');
+
+    // 1. Mai întâi ștergem înregistrările din claimed_products
+    await db.query(`
+      DELETE FROM claimed_products 
+      WHERE food_id IN (
+        SELECT id FROM foods 
+        WHERE user_id = $1 AND is_expired = true
+      )`, [userId]);
+
+    // 2. Apoi ștergem relațiile cu categoriile
+    await db.query(`
+      DELETE FROM food_category_relations 
+      WHERE food_id IN (
+        SELECT id FROM foods 
+        WHERE user_id = $1 AND is_expired = true
+      )`, [userId]);
+    
+    // 3. În final ștergem produsele expirate
+    await db.query(
+      'DELETE FROM foods WHERE user_id = $1 AND is_expired = true',
+      [userId]
+    );
+
+    await db.query('COMMIT');
+    res.json([]); // Returnăm array gol după ștergere
+  } catch (error) {
+    await db.query('ROLLBACK');
+    console.error('Eroare la ștergerea produselor expirate:', error);
+    res.status(500).json({ message: 'Eroare la ștergerea produselor expirate' });
+  }
+});
+
+// Actualizăm și ruta pentru ștergerea unui singur produs expirat
+router.delete('/expired/:username/:id', async (req, res) => {
+  const { username, id } = req.params;
+  
+  try {
+    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Utilizator negăsit' });
+    }
+    const userId = userResult.rows[0].id;
+
+    await db.query('BEGIN');
+
+    // 1. Mai întâi ștergem înregistrarea din claimed_products
+    await db.query('DELETE FROM claimed_products WHERE food_id = $1', [id]);
+    
+    // 2. Apoi ștergem relațiile cu categoriile
+    await db.query('DELETE FROM food_category_relations WHERE food_id = $1', [id]);
+    
+    // 3. În final ștergem produsul expirat
+    await db.query(
+      'DELETE FROM foods WHERE id = $1 AND user_id = $2 AND is_expired = true',
+      [id, userId]
+    );
+
+    await db.query('COMMIT');
+
+    // Returnăm lista actualizată de produse expirate
+    const expiredProducts = await getFoodsWithCategories(
+      'WHERE f.user_id = $1 AND f.is_expired = true',
+      [userId]
+    );
+
+    res.json(expiredProducts);
+  } catch (error) {
+    await db.query('ROLLBACK');
+    console.error('Eroare la ștergerea produsului expirat:', error);
+    res.status(500).json({ message: 'Eroare la ștergerea produsului' });
+  }
+});
+// 4. Rută pentru obținerea produselor expirate
+router.get('/expired/:username', async (req, res) => {
+  const { username } = req.params;
+  
+  try {
+    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Utilizator negăsit' });
+    }
+    const userId = userResult.rows[0].id;
+
+    const expiredProducts = await getFoodsWithCategories(
+      'WHERE f.user_id = $1 AND f.is_expired = true',
+      [userId]
+    );
+
+    res.json(expiredProducts);
+  } catch (error) {
+    console.error('Eroare la obținerea produselor expirate:', error);
+    res.status(500).json({ message: 'Eroare la obținerea produselor expirate' });
+  }
+});
+
+
 router.post('/:username', upload.single('image'), async (req, res) => {
   const { username } = req.params;
   const { name, expirationDate, categories } = req.body;
@@ -240,28 +382,6 @@ router.put('/unavailable/:username/:id', upload.single('image'), async (req, res
     await db.query('ROLLBACK');
     console.error('Eroare la actualizarea produsului disponibil:', error);
     res.status(500).json({ message: 'Eroare la actualizarea produsului' });
-  }
-});
-// GET /foods/expired/:username - Obține produsele expirate
-router.get('/expired/:username', async (req, res) => {
-  const { username } = req.params;
-  
-  try {
-    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ message: 'Utilizator negăsit' });
-    }
-
-    const userId = userResult.rows[0].id;
-    const foods = await getFoodsWithCategories(
-      'WHERE f.user_id = $1 AND is_expired = true',
-      [userId]
-    );
-    
-    res.json(foods);
-  } catch (error) {
-    console.error('Eroare la obținerea produselor expirate:', error);
-    res.status(500).json({ message: 'Eroare la obținerea produselor expirate' });
   }
 });
 
