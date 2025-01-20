@@ -311,19 +311,22 @@ router.get('/unavailable/:username', async (req, res) => {
 });
 
 // Adaugă acest endpoint în foods.js
+// În foods.js
+
 router.put('/unavailable/:username/:id', upload.single('image'), async (req, res) => {
   const { username, id } = req.params;
   const { name, expirationDate, categories } = req.body;
 
-  if (!name || !expirationDate || !categories || categories.length === 0) {
+  if (!name || !expirationDate || !categories) {
     return res.status(400).json({ 
-      message: 'Toate câmpurile sunt necesare și trebuie selectată cel puțin o categorie.' 
+      message: 'Toate câmpurile sunt necesare.' 
     });
   }
 
   try {
     await db.query('BEGIN');
 
+    // Verificăm utilizatorul și proprietatea asupra produsului
     const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
     if (userResult.rows.length === 0) {
       await db.query('ROLLBACK');
@@ -331,52 +334,108 @@ router.put('/unavailable/:username/:id', upload.single('image'), async (req, res
     }
     const userId = userResult.rows[0].id;
 
-    // Actualizăm produsul, inclusiv imaginea dacă există
-    if (req.file) {
-      await db.query(
-        'UPDATE foods SET name = $1, expiration_date = $2, image_data = $3, image_type = $4 WHERE id = $5 AND user_id = $6 AND is_available = true',
-        [name, expirationDate, req.file.buffer, req.file.mimetype, id, userId]
-      );
-    } else {
-      await db.query(
-        'UPDATE foods SET name = $1, expiration_date = $2 WHERE id = $3 AND user_id = $4 AND is_available = true',
-        [name, expirationDate, id, userId]
-      );
+    // Verificăm dacă produsul există și este disponibil
+    const foodCheck = await db.query(
+      'SELECT id FROM foods WHERE id = $1 AND user_id = $2 AND is_available = true',
+      [id, userId]
+    );
+
+    if (foodCheck.rows.length === 0) {
+      await db.query('ROLLBACK');
+      return res.status(404).json({ message: 'Produs negăsit sau nu este disponibil' });
     }
 
-    // Ștergem relațiile vechi cu categoriile
+    // Actualizăm produsul cu sau fără imagine nouă
+    let updateQuery;
+    let updateParams;
+
+    if (req.file) {
+      // Actualizare cu imagine nouă
+      updateQuery = `
+        UPDATE foods 
+        SET name = $1, 
+            expiration_date = $2, 
+            image_data = $3, 
+            image_type = $4 
+        WHERE id = $5 AND user_id = $6 AND is_available = true
+        RETURNING id
+      `;
+      updateParams = [
+        name, 
+        expirationDate, 
+        req.file.buffer, 
+        req.file.mimetype, 
+        id, 
+        userId
+      ];
+    } else {
+      // Actualizare fără imagine nouă
+      updateQuery = `
+        UPDATE foods 
+        SET name = $1, 
+            expiration_date = $2
+        WHERE id = $3 AND user_id = $4 AND is_available = true
+        RETURNING id
+      `;
+      updateParams = [name, expirationDate, id, userId];
+    }
+
+    const foodResult = await db.query(updateQuery, updateParams);
+
+    // Actualizăm categoriile
     await db.query('DELETE FROM food_category_relations WHERE food_id = $1', [id]);
 
-    // Adăugăm noile relații cu categoriile
     const categoriesArray = Array.isArray(categories) ? categories : JSON.parse(categories);
     for (const categoryName of categoriesArray) {
       const categoryResult = await db.query(
         'SELECT id FROM food_categories WHERE name = $1',
         [categoryName]
       );
-      const categoryId = categoryResult.rows[0].id;
-      
-      await db.query(
-        'INSERT INTO food_category_relations (food_id, category_id) VALUES ($1, $2)',
-        [id, categoryId]
-      );
+      if (categoryResult.rows.length > 0) {
+        await db.query(
+          'INSERT INTO food_category_relations (food_id, category_id) VALUES ($1, $2)',
+          [id, categoryResult.rows[0].id]
+        );
+      }
     }
+
+    // Obținem lista actualizată de produse disponibile
+    const updatedFoods = await db.query(`
+      SELECT 
+        f.*,
+        array_agg(fc.name) as categories,
+        CASE 
+          WHEN f.image_data IS NOT NULL 
+          THEN concat('/foods/image/', f.id::text)
+          ELSE NULL 
+        END as image_url
+      FROM foods f
+      LEFT JOIN food_category_relations fcr ON f.id = fcr.food_id
+      LEFT JOIN food_categories fc ON fcr.category_id = fc.id
+      WHERE f.user_id = $1 AND f.is_available = true AND NOT f.is_expired
+      GROUP BY f.id
+      ORDER BY f.expiration_date
+    `, [userId]);
 
     await db.query('COMMIT');
 
-    // Returnăm lista actualizată de produse disponibile
-    const updatedFoods = await getFoodsWithCategories(
-      'WHERE f.user_id = $1 AND f.is_available = true AND NOT f.is_expired',
-      [userId]
-    );
-    res.json(updatedFoods);
+    // Formatăm răspunsul
+    const formattedFoods = updatedFoods.rows.map(food => ({
+      id: food.id,
+      name: food.name,
+      expirationDate: food.expiration_date.toISOString().split('T')[0],
+      categories: food.categories.filter(c => c !== null),
+      imageUrl: food.image_url,
+      isNearExpiration: isNearExpiration(food.expiration_date)
+    }));
+
+    res.json(formattedFoods);
   } catch (error) {
     await db.query('ROLLBACK');
     console.error('Eroare la actualizarea produsului disponibil:', error);
     res.status(500).json({ message: 'Eroare la actualizarea produsului' });
   }
 });
-
 
 
 router.post('/:username', async (req, res) => {
@@ -512,19 +571,22 @@ router.post('/:username/toggle-availability/:id', async (req, res) => {
   }
 });
 
+// In foods.js
+
 router.put('/:username/:id', upload.single('image'), async (req, res) => {
   const { username, id } = req.params;
   const { name, expirationDate, categories } = req.body;
 
-  if (!name || !expirationDate || !categories || categories.length === 0) {
+  if (!name || !expirationDate || !categories) {
     return res.status(400).json({ 
-      message: 'Toate câmpurile sunt necesare și trebuie selectată cel puțin o categorie.' 
+      message: 'Toate câmpurile sunt necesare.' 
     });
   }
 
   try {
     await db.query('BEGIN');
 
+    // Get user ID and verify ownership
     const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
     if (userResult.rows.length === 0) {
       await db.query('ROLLBACK');
@@ -532,45 +594,96 @@ router.put('/:username/:id', upload.single('image'), async (req, res) => {
     }
     const userId = userResult.rows[0].id;
 
-    // Actualizăm produsul, inclusiv imaginea dacă există
+    // Update the food item
+    let updateQuery;
+    let updateParams;
+
     if (req.file) {
-      await db.query(
-        'UPDATE foods SET name = $1, expiration_date = $2, image_data = $3, image_type = $4 WHERE id = $5 AND user_id = $6',
-        [name, expirationDate, req.file.buffer, req.file.mimetype, id, userId]
-      );
+      // If a new image was uploaded, update all fields including the image
+      updateQuery = `
+        UPDATE foods 
+        SET name = $1, 
+            expiration_date = $2, 
+            image_data = $3, 
+            image_type = $4 
+        WHERE id = $5 AND user_id = $6
+        RETURNING id
+      `;
+      updateParams = [
+        name, 
+        expirationDate, 
+        req.file.buffer, 
+        req.file.mimetype, 
+        id, 
+        userId
+      ];
     } else {
-      await db.query(
-        'UPDATE foods SET name = $1, expiration_date = $2 WHERE id = $3 AND user_id = $4',
-        [name, expirationDate, id, userId]
-      );
+      // If no new image, update only the other fields
+      updateQuery = `
+        UPDATE foods 
+        SET name = $1, 
+            expiration_date = $2
+        WHERE id = $3 AND user_id = $4
+        RETURNING id
+      `;
+      updateParams = [name, expirationDate, id, userId];
     }
 
-    // Ștergem relațiile vechi cu categoriile
+    const foodResult = await db.query(updateQuery, updateParams);
+    
+    if (foodResult.rows.length === 0) {
+      await db.query('ROLLBACK');
+      return res.status(404).json({ message: 'Produs negăsit' });
+    }
+
+    // Update categories
     await db.query('DELETE FROM food_category_relations WHERE food_id = $1', [id]);
 
-    // Adăugăm noile relații cu categoriile
     const categoriesArray = Array.isArray(categories) ? categories : JSON.parse(categories);
     for (const categoryName of categoriesArray) {
       const categoryResult = await db.query(
         'SELECT id FROM food_categories WHERE name = $1',
         [categoryName]
       );
-      const categoryId = categoryResult.rows[0].id;
-      
-      await db.query(
-        'INSERT INTO food_category_relations (food_id, category_id) VALUES ($1, $2)',
-        [id, categoryId]
-      );
+      if (categoryResult.rows.length > 0) {
+        await db.query(
+          'INSERT INTO food_category_relations (food_id, category_id) VALUES ($1, $2)',
+          [id, categoryResult.rows[0].id]
+        );
+      }
     }
+
+    // Get updated food list with the new image URL and all necessary information
+    const updatedFoods = await db.query(`
+      SELECT 
+        f.*,
+        array_agg(fc.name) as categories,
+        CASE 
+          WHEN f.image_data IS NOT NULL 
+          THEN concat('/foods/image/', f.id::text)
+          ELSE NULL 
+        END as image_url
+      FROM foods f
+      LEFT JOIN food_category_relations fcr ON f.id = fcr.food_id
+      LEFT JOIN food_categories fc ON fcr.category_id = fc.id
+      WHERE f.user_id = $1 AND NOT f.is_available AND NOT f.is_expired
+      GROUP BY f.id
+      ORDER BY f.expiration_date
+    `, [userId]);
 
     await db.query('COMMIT');
 
-    // Returnăm lista actualizată
-    const updatedFoods = await getFoodsWithCategories(
-      'WHERE f.user_id = $1 AND NOT f.is_available AND NOT f.is_expired',
-      [userId]
-    );
-    res.json(updatedFoods);
+    // Format the response
+    const formattedFoods = updatedFoods.rows.map(food => ({
+      id: food.id,
+      name: food.name,
+      expirationDate: food.expiration_date.toISOString().split('T')[0],
+      categories: food.categories.filter(c => c !== null),
+      imageUrl: food.image_url,
+      isNearExpiration: isNearExpiration(food.expiration_date)
+    }));
+
+    res.json(formattedFoods);
   } catch (error) {
     await db.query('ROLLBACK');
     console.error('Eroare la actualizarea produsului:', error);
