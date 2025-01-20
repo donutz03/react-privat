@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
 const { isNearExpiration } = require('../utils/dateHelpers');
+const { moveExpiredProducts } = require('../services/productService');
+
 
 const multer = require('multer');
 const storage = multer.memoryStorage(); // Stocăm imaginea în memorie în loc de disk
@@ -588,11 +590,85 @@ router.post('/check-expired/:username', async (req, res) => {
   const { username } = req.params;
 
   try {
-    const expiredProducts = await moveExpiredProducts(username);
+    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Utilizator negăsit' });
+    }
+
+    // Actualizăm produsele expirate
+    const currentDate = new Date().toISOString().split('T')[0];
+    const userId = userResult.rows[0].id;
+
+    await db.query(
+      `UPDATE foods 
+       SET is_expired = true, is_available = false 
+       WHERE user_id = $1 
+       AND expiration_date < $2 
+       AND is_expired = false`,
+      [userId, currentDate]
+    );
+
+    // Obținem lista actualizată de produse expirate
+    const expiredResult = await db.query(`
+      SELECT f.*, 
+             array_agg(fc.name) as categories,
+             to_char(f.expiration_date, 'YYYY-MM-DD') as formatted_date
+      FROM foods f
+      LEFT JOIN food_category_relations fcr ON f.id = fcr.food_id
+      LEFT JOIN food_categories fc ON fcr.category_id = fc.id
+      WHERE f.user_id = $1 AND f.is_expired = true
+      GROUP BY f.id`,
+      [userId]
+    );
+
+    const expiredProducts = expiredResult.rows.map(food => ({
+      id: food.id,
+      name: food.name,
+      expirationDate: food.formatted_date,
+      categories: food.categories.filter(c => c !== null)
+    }));
+
     res.json({ message: 'Verificare completă', expiredProducts });
   } catch (error) {
     console.error('Eroare la verificarea produselor expirate:', error);
     res.status(500).json({ message: 'Eroare la verificarea produselor expirate' });
+  }
+});
+
+// Adaugă și ruta pentru obținerea produselor expirate
+router.get('/expired/:username', async (req, res) => {
+  const { username } = req.params;
+  
+  try {
+    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Utilizator negăsit' });
+    }
+    const userId = userResult.rows[0].id;
+
+    const expiredResult = await db.query(`
+      SELECT f.*, 
+             array_agg(fc.name) as categories,
+             to_char(f.expiration_date, 'YYYY-MM-DD') as formatted_date
+      FROM foods f
+      LEFT JOIN food_category_relations fcr ON f.id = fcr.food_id
+      LEFT JOIN food_categories fc ON fcr.category_id = fc.id
+      WHERE f.user_id = $1 AND f.is_expired = true
+      GROUP BY f.id`,
+      [userId]
+    );
+
+    const expiredProducts = expiredResult.rows.map(food => ({
+      id: food.id,
+      name: food.name,
+      expirationDate: food.formatted_date,
+      categories: food.categories.filter(c => c !== null)
+    }));
+
+    res.json(expiredProducts);
+  } catch (error) {
+    console.error('Eroare la obținerea produselor expirate:', error);
+    res.status(500).json({ message: 'Eroare la obținerea produselor expirate' });
   }
 });
 module.exports = router;
