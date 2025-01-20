@@ -161,14 +161,14 @@ router.get('/expired/:username', async (req, res) => {
   }
 });
 
-// În foods.js, funcția POST
+// In foods.js, update the POST route
 router.post('/:username', upload.single('image'), async (req, res) => {
   const { username } = req.params;
   const { name, expirationDate, categories } = req.body;
 
-  if (!name || !expirationDate || !categories) {
+  if (!name || !expirationDate || !categories || !req.file) {
     return res.status(400).json({ 
-      message: 'Numele și data expirării sunt obligatorii.' 
+      message: 'Toate câmpurile, inclusiv imaginea, sunt obligatorii.' 
     });
   }
 
@@ -182,22 +182,13 @@ router.post('/:username', upload.single('image'), async (req, res) => {
     }
     const userId = userResult.rows[0].id;
 
-    // Inserăm produsul cu imagine dacă există
-    let foodResult;
-    if (req.file) {
-      foodResult = await db.query(
-        'INSERT INTO foods (user_id, name, expiration_date, image_data, image_type) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-        [userId, name, expirationDate, req.file.buffer, req.file.mimetype]
-      );
-    } else {
-      foodResult = await db.query(
-        'INSERT INTO foods (user_id, name, expiration_date) VALUES ($1, $2, $3) RETURNING id',
-        [userId, name, expirationDate]
-      );
-    }
+    const foodResult = await db.query(
+      'INSERT INTO foods (user_id, name, expiration_date, image_data, image_type) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+      [userId, name, expirationDate, req.file.buffer, req.file.mimetype]
+    );
+    
     const foodId = foodResult.rows[0].id;
 
-    // Inserăm categoriile
     const categoriesArray = Array.isArray(categories) ? categories : JSON.parse(categories);
     for (const categoryName of categoriesArray) {
       const categoryResult = await db.query(
@@ -212,15 +203,12 @@ router.post('/:username', upload.single('image'), async (req, res) => {
 
     await db.query('COMMIT');
 
-    // Returnăm lista actualizată folosind getFoodsWithCategories
     const updatedFoods = await getFoodsWithCategories(
       'WHERE f.user_id = $1 AND NOT f.is_available AND NOT f.is_expired',
       [userId]
     );
 
-    // Verificăm că returnăm un array
     res.status(201).json(Array.isArray(updatedFoods) ? updatedFoods : []);
-
   } catch (error) {
     await db.query('ROLLBACK');
     console.error('Eroare la adăugarea produsului:', error);
