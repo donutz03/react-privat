@@ -183,11 +183,13 @@ const FriendsManager = () => {
   const handleCreateGroup = async () => {
     if (!newGroupName.trim()) {
       setError('Introduceți un nume pentru grup');
+      setTimeout(() => setError(''), 3000);
       return;
     }
   
     if (selectedFriendsForGroup.length === 0) {
       setError('Selectați cel puțin un prieten pentru grup');
+      setTimeout(() => setError(''), 3000);
       return;
     }
   
@@ -334,7 +336,17 @@ const FriendsManager = () => {
           Creează Grup
         </button>
       </div>
-
+      {error && (
+          <div style={{
+            padding: '10px',
+            backgroundColor: '#ffebee',
+            color: '#c62828',
+            borderRadius: '4px',
+            marginBottom: '10px'
+          }}>
+            {error}
+          </div>
+      )}
       {/* Display groups */}
       {groups.length > 0 && (
         <div style={{ marginBottom: '20px' }}>
@@ -356,18 +368,8 @@ const FriendsManager = () => {
         </div>
       )}
 
-      {/* Error and success messages */}
-      {error && (
-        <div style={{
-          padding: '10px',
-          backgroundColor: '#ffebee',
-          color: '#c62828',
-          borderRadius: '4px',
-          marginBottom: '10px'
-        }}>
-          {error}
-        </div>
-      )}
+
+
 
       {success && (
         <div style={{
