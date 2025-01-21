@@ -13,6 +13,11 @@ const app = express();
 
 // Middleware
 app.use(cors());
+app.use('/foods/image', cors({
+    origin: 'http://localhost:3000',
+    methods: ['GET'],
+    maxAge: 86400
+}));
 app.use(bodyParser.json());
 
 // Routes
