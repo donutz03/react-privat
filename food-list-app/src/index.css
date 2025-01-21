@@ -9,6 +9,33 @@ body {
   button{
     font-family: "Montserrat", sans-serif;
   }
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(200px); /* Se "ridică" ușor */
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeOut 0.5s ease-out;
+}
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.rotating-image {
+  animation: rotate 2s linear infinite; /* 2s = durata completă, linear = rotație constantă, infinite = continuu */
+  display: inline-block; /* Pentru a aplica transformarea corect */
+}
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',

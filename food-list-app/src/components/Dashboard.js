@@ -323,7 +323,7 @@ function Dashboard() {
       </div>
 
       {/* Add Food Section */}
-      <div style={{display:'flex'}}>
+      <div style={{display:'flex'}} >
         <div style={{ marginBottom: '20px' }}>
           <h2>Adaugă Aliment</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '500px' }}>
@@ -407,8 +407,9 @@ function Dashboard() {
         <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
           <img
               src="home-img.jpg"
-              width={550}
+              width={400}
               style={{ display: 'block', margin: '0 auto' }}
+              className="rotating-image"
           />
         </div>
 
