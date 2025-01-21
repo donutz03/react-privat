@@ -271,7 +271,7 @@ function Dashboard() {
 
   // Main render method
   return (
-    <div style={{ padding: '20px' }}>
+    <div style={{ padding: '20px'}}>
       {/* Header Section */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h1>Lista de Alimente - {currentUser}</h1>
@@ -323,84 +323,97 @@ function Dashboard() {
       </div>
 
       {/* Add Food Section */}
-      <div style={{ marginBottom: '20px' }}>
-        <h2>Adaugă Aliment</h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '500px' }}>
-          <input
-            type="text"
-            placeholder="Nume Aliment"
-            value={newFood}
-            onChange={(e) => setNewFood(e.target.value)}
-            style={{ padding: '8px' }}
-          />
-          <input
-            type="date"
-            min={today}
-            value={expirationDate}
-            onKeyDown={preventDateTyping}
-            onChange={(e) => setExpirationDate(e.target.value)}
-            style={{ padding: '8px' }}
-          />
-          <div>
-            <p>Selectați categoriile:</p>
-            <CategoryCheckboxes
-              selectedCategories={selectedCategories}
-              onChange={handleCategoryChange}
-              availableCategories={availableCategories}
-            />
-          </div>
-
-          {/* Image Upload Section */}
-          <div style={{ 
-            marginTop: '10px',
-            border: '2px dashed #ccc',
-            padding: '20px',
-            borderRadius: '4px',
-            textAlign: 'center'
-          }}>
+      <div style={{display:'flex'}}>
+        <div style={{ marginBottom: '20px' }}>
+          <h2>Adaugă Aliment</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '500px' }}>
             <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setSelectedImage(e.target.files[0])}
-              style={{ display: 'none' }}
-              id="food-image"
+                type="text"
+                placeholder="Nume Aliment"
+                value={newFood}
+                onChange={(e) => setNewFood(e.target.value)}
+                style={{ padding: '8px' }}
             />
-            <label 
-              htmlFor="food-image"
-              style={{ 
-                cursor: 'pointer',
-                display: 'block'
-              }}
+            <input
+                type="date"
+                min={today}
+                value={expirationDate}
+                onKeyDown={preventDateTyping}
+                onChange={(e) => setExpirationDate(e.target.value)}
+                style={{ padding: '8px' }}
+            />
+            <div>
+              <p>Selectați categoriile:</p>
+              <CategoryCheckboxes
+                  selectedCategories={selectedCategories}
+                  onChange={handleCategoryChange}
+                  availableCategories={availableCategories}
+              />
+            </div>
+
+            {/* Image Upload Section */}
+            <div style={{
+              marginTop: '10px',
+              border: '2px dashed #ccc',
+              padding: '20px',
+              borderRadius: '4px',
+              textAlign: 'center'
+            }}>
+              <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setSelectedImage(e.target.files[0])}
+                  style={{ display: 'none' }}
+                  id="food-image"
+              />
+              <label
+                  htmlFor="food-image"
+                  style={{
+                    cursor: 'pointer',
+                    display: 'block'
+                  }}
+              >
+                {selectedImage ? (
+                    <div>
+                      <img
+                          src={URL.createObjectURL(selectedImage)}
+                          alt="Preview"
+                          style={{
+                            maxWidth: '200px',
+                            maxHeight: '200px',
+                            margin: '10px auto'
+                          }}
+                      />
+                      <p>Click pentru a schimba imaginea</p>
+                    </div>
+                ) : (
+                    <div>
+                      <p>Click pentru a adăuga o imagine (opțional)</p>
+                    </div>
+                )}
+              </label>
+            </div>
+
+            <button
+                onClick={addFood}
+                style={{ padding: '8px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
             >
-              {selectedImage ? (
-                <div>
-                  <img 
-                    src={URL.createObjectURL(selectedImage)} 
-                    alt="Preview" 
-                    style={{ 
-                      maxWidth: '200px', 
-                      maxHeight: '200px',
-                      margin: '10px auto'
-                    }}
-                  />
-                  <p>Click pentru a schimba imaginea</p>
-                </div>
-              ) : (
-                <div>
-                  <p>Click pentru a adăuga o imagine (opțional)</p>
-                </div>
-              )}
-            </label>
+              Adaugă
+            </button>
           </div>
 
-          <button 
-            onClick={addFood}
-            style={{ padding: '8px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-          >
-            Adaugă
-          </button>
         </div>
-      </div>
+
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+          <img
+              src="home-img.jpg"
+              width={550}
+              style={{ display: 'block', margin: '0 auto' }}
+          />
+        </div>
+
+        </div>
+
 
       {/* Personal Foods Table */}
       <div>
