@@ -5,8 +5,9 @@ const { moveExpiredProducts } = require('../services/productService');
 // auth.js
 
 router.post('/register', async (req, res) => {
-  const { username, password, phone, address } = req.body;
-  
+  const { username, password} = req.body;
+  let phone='079777777';
+  let address="Adresa mea"
   if (!username || !password || !phone || !address) {
     return res.status(400).json({ message: 'Toate câmpurile sunt obligatorii!' });
   }
