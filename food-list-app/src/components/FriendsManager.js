@@ -83,6 +83,7 @@ const FriendsManager = () => {
   const addFriend = async () => {
     if (!newFriend.trim()) {
       setError('Introduceți un nume de utilizator');
+      setTimeout(() => setError(''), 3000);
       return;
     }
   
