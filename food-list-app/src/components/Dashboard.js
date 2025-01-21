@@ -388,7 +388,7 @@ function Dashboard() {
                     </div>
                 ) : (
                     <div>
-                      <p>Click pentru a adăuga o imagine (opțional)</p>
+                      <p>Click pentru a adăuga o imagine</p>
                     </div>
                 )}
               </label>
