@@ -285,7 +285,17 @@ const FriendsManager = () => {
           Adaugă Prieten
         </button>
       </div>
-
+      {error && (
+          <div style={{
+            padding: '10px',
+            backgroundColor: '#ffebee',
+            color: '#c62828',
+            borderRadius: '4px',
+            marginBottom: '10px'
+          }}>
+            {error}
+          </div>
+      )}
       {/* Create new group section */}
       <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
         <h3>Creare Grup Nou</h3>
@@ -336,17 +346,7 @@ const FriendsManager = () => {
           Creează Grup
         </button>
       </div>
-      {error && (
-          <div style={{
-            padding: '10px',
-            backgroundColor: '#ffebee',
-            color: '#c62828',
-            borderRadius: '4px',
-            marginBottom: '10px'
-          }}>
-            {error}
-          </div>
-      )}
+
       {/* Display groups */}
       {groups.length > 0 && (
         <div style={{ marginBottom: '20px' }}>
