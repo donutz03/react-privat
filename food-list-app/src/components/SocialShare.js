@@ -1,16 +1,100 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { Facebook, Instagram, Download } from 'lucide-react';
 import html2canvas from 'html2canvas';
 
 const SocialShare = ({ foods }) => {
-    const tableRef = useRef(null);
+    const createProductsPreview = () => {
+        // Creăm container-ul principal
+        const container = document.createElement('div');
+        container.style.backgroundColor = 'white';
+        container.style.padding = '20px';
+        container.style.maxWidth = '1200px';
+        container.style.margin = '0 auto';
+
+        // Adăugăm titlul
+        const title = document.createElement('h3');
+        title.textContent = 'Produse Disponibile';
+        title.style.fontSize = '24px';
+        title.style.fontWeight = 'bold';
+        title.style.textAlign = 'center';
+        title.style.marginBottom = '20px';
+        container.appendChild(title);
+
+        // Creăm grid-ul pentru produse
+        const grid = document.createElement('div');
+        grid.style.display = 'grid';
+        grid.style.gridTemplateColumns = 'repeat(3, 1fr)';
+        grid.style.gap = '20px';
+        grid.style.padding = '20px';
+
+        // Adăugăm fiecare produs
+        foods.forEach(food => {
+            const card = document.createElement('div');
+            card.style.backgroundColor = '#f8f9fa';
+            card.style.borderRadius = '8px';
+            card.style.padding = '16px';
+            card.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+
+            if (food.imageUrl) {
+                const img = document.createElement('img');
+                img.src = `http://localhost:5000${food.imageUrl}`;
+                img.crossOrigin = 'anonymous';
+                img.style.width = '100%';
+                img.style.height = '200px';
+                img.style.objectFit = 'cover';
+                img.style.borderRadius = '4px';
+                img.style.marginBottom = '12px';
+                card.appendChild(img);
+            }
+
+            const name = document.createElement('h4');
+            name.textContent = food.name;
+            name.style.fontSize = '18px';
+            name.style.fontWeight = 'bold';
+            name.style.marginBottom = '8px';
+            card.appendChild(name);
+
+            const date = document.createElement('p');
+            date.textContent = `Expiră la: ${food.expirationDate}`;
+            date.style.color = '#666';
+            date.style.marginBottom = '8px';
+            card.appendChild(date);
+
+            const categories = document.createElement('div');
+            categories.style.display = 'flex';
+            categories.style.flexWrap = 'wrap';
+            categories.style.gap = '4px';
+
+            food.categories.forEach(category => {
+                const tag = document.createElement('span');
+                tag.textContent = category;
+                tag.style.backgroundColor = '#e3f2fd';
+                tag.style.color = '#1976d2';
+                tag.style.padding = '4px 8px';
+                tag.style.borderRadius = '12px';
+                tag.style.fontSize = '12px';
+                categories.appendChild(tag);
+            });
+
+            card.appendChild(categories);
+            grid.appendChild(card);
+        });
+
+        container.appendChild(grid);
+        return container;
+    };
 
     const generateImage = async () => {
-        if (!tableRef.current) return null;
-
         try {
-            // Wait for images to load before generating canvas
-            const images = tableRef.current.getElementsByTagName('img');
+            const container = createProductsPreview();
+
+            // Adăugăm temporar la body pentru html2canvas, dar ascuns
+            container.style.position = 'absolute';
+            container.style.left = '-9999px';
+            document.body.appendChild(container);
+
+            // Așteptăm încărcarea imaginilor
+            const images = container.getElementsByTagName('img');
             await Promise.all([...images].map(img => {
                 if (img.complete) return Promise.resolve();
                 return new Promise(resolve => {
@@ -19,13 +103,16 @@ const SocialShare = ({ foods }) => {
                 });
             }));
 
-            const canvas = await html2canvas(tableRef.current, {
+            const canvas = await html2canvas(container, {
                 scale: 2,
                 useCORS: true,
                 logging: false,
                 backgroundColor: '#ffffff',
-                allowTaint: true,
+                allowTaint: true
             });
+
+            // Curățăm după noi
+            document.body.removeChild(container);
 
             return canvas.toDataURL('image/png');
         } catch (error) {
@@ -56,65 +143,30 @@ const SocialShare = ({ foods }) => {
     };
 
     return (
-        <div className="space-y-4">
-            <div className="flex gap-2">
-                <button
-                    onClick={shareToFacebook}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#1877F2] text-white rounded-lg hover:bg-[#1864D9] transition-colors"
-                >
-                    <Facebook size={20} />
-                    Share pe Facebook
-                </button>
+        <div className="flex gap-2">
+            <button
+                onClick={shareToFacebook}
+                className="flex items-center gap-2 px-4 py-2 bg-[#1877F2] text-white rounded-lg hover:bg-[#1864D9] transition-colors"
+            >
+                <Facebook size={20} />
+                Share pe Facebook
+            </button>
 
-                <button
-                    onClick={shareToInstagram}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#E4405F] text-white rounded-lg hover:bg-[#D1274A] transition-colors"
-                >
-                    <Instagram size={20} />
-                    Share pe Instagram
-                </button>
+            <button
+                onClick={shareToInstagram}
+                className="flex items-center gap-2 px-4 py-2 bg-[#E4405F] text-white rounded-lg hover:bg-[#D1274A] transition-colors"
+            >
+                <Instagram size={20} />
+                Share pe Instagram
+            </button>
 
-                <button
-                    onClick={downloadImage}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                >
-                    <Download size={20} />
-                    Descarcă imagine
-                </button>
-            </div>
-
-            {/* Table to be converted to image */}
-            <div ref={tableRef} className="bg-white p-4 rounded-lg shadow max-w-4xl">
-                <h3 className="text-xl font-bold mb-4 text-center">Produse Disponibile</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {foods.map((food) => (
-                        <div key={food.id} className="bg-gray-50 rounded-lg p-4 shadow-sm">
-                            {food.imageUrl && (
-                                <img
-                                    src={`http://localhost:5000${food.imageUrl}`}
-                                    alt={food.name}
-                                    className="w-full h-48 object-cover rounded-lg mb-3"
-                                    crossOrigin="anonymous"
-                                />
-                            )}
-                            <h4 className="font-semibold text-lg mb-2">{food.name}</h4>
-                            <p className="text-gray-600 text-sm mb-2">
-                                Expiră la: {food.expirationDate}
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                                {food.categories.map((category, idx) => (
-                                    <span
-                                        key={idx}
-                                        className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full"
-                                    >
-                    {category}
-                  </span>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
+            <button
+                onClick={downloadImage}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            >
+                <Download size={20} />
+                Descarcă imagine
+            </button>
         </div>
     );
 };
