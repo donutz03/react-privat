@@ -33,7 +33,7 @@ body {
 }
 
 .rotating-image {
-  animation: rotate 2s linear infinite; /* 2s = durata completă, linear = rotație constantă, infinite = continuu */
+  animation: rotate 4s linear infinite; /* 2s = durata completă, linear = rotație constantă, infinite = continuu */
   display: inline-block; /* Pentru a aplica transformarea corect */
 }
 
