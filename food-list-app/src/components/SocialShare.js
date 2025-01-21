@@ -9,11 +9,22 @@ const SocialShare = ({ foods }) => {
         if (!tableRef.current) return null;
 
         try {
+            // Wait for images to load before generating canvas
+            const images = tableRef.current.getElementsByTagName('img');
+            await Promise.all([...images].map(img => {
+                if (img.complete) return Promise.resolve();
+                return new Promise(resolve => {
+                    img.onload = resolve;
+                    img.onerror = resolve;
+                });
+            }));
+
             const canvas = await html2canvas(tableRef.current, {
                 scale: 2,
                 useCORS: true,
                 logging: false,
-                backgroundColor: '#ffffff'
+                backgroundColor: '#ffffff',
+                allowTaint: true,
             });
 
             return canvas.toDataURL('image/png');
@@ -73,26 +84,36 @@ const SocialShare = ({ foods }) => {
             </div>
 
             {/* Table to be converted to image */}
-            <div ref={tableRef} className="bg-white p-4 rounded-lg shadow">
-                <h3 className="text-xl font-bold mb-4">Produse Disponibile</h3>
-                <table className="w-full border-collapse">
-                    <thead>
-                    <tr className="bg-gray-100">
-                        <th className="border p-2 text-left">Produs</th>
-                        <th className="border p-2 text-left">Data Expirării</th>
-                        <th className="border p-2 text-left">Categorii</th>
-                    </tr>
-                    </thead>
-                    <tbody>
+            <div ref={tableRef} className="bg-white p-4 rounded-lg shadow max-w-4xl">
+                <h3 className="text-xl font-bold mb-4 text-center">Produse Disponibile</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {foods.map((food) => (
-                        <tr key={food.id}>
-                            <td className="border p-2">{food.name}</td>
-                            <td className="border p-2">{food.expirationDate}</td>
-                            <td className="border p-2">{food.categories.join(', ')}</td>
-                        </tr>
+                        <div key={food.id} className="bg-gray-50 rounded-lg p-4 shadow-sm">
+                            {food.imageUrl && (
+                                <img
+                                    src={`http://localhost:5000${food.imageUrl}`}
+                                    alt={food.name}
+                                    className="w-full h-48 object-cover rounded-lg mb-3"
+                                    crossOrigin="anonymous"
+                                />
+                            )}
+                            <h4 className="font-semibold text-lg mb-2">{food.name}</h4>
+                            <p className="text-gray-600 text-sm mb-2">
+                                Expiră la: {food.expirationDate}
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                                {food.categories.map((category, idx) => (
+                                    <span
+                                        key={idx}
+                                        className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full"
+                                    >
+                    {category}
+                  </span>
+                                ))}
+                            </div>
+                        </div>
                     ))}
-                    </tbody>
-                </table>
+                </div>
             </div>
         </div>
     );
