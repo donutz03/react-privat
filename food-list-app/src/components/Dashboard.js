@@ -408,7 +408,7 @@ function Dashboard() {
           <img
               src="home-img.jpg"
               width={400}
-              style={{ display: 'block', margin: '0 auto' }}
+              style={{ display: 'block', margin: '0 auto',borderRadius:'100%' }}
               className="rotating-image"
           />
         </div>
