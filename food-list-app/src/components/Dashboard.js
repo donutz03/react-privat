@@ -203,18 +203,22 @@ function Dashboard() {
     if (editFood.image) {
       formData.append('image', editFood.image);
     }
-  
+
     fetch(`http://localhost:5000/foods/${currentUser}/${foodId}`, {
       method: 'PUT',
-      body: formData
+      body: formData,
     })
-      .then((res) => res.json())
-      .then((data) => {
-        setPersonalFoods(data);
-        setEditingFoodId(null);
-        setEditFood({ name: '', expirationDate: '', categories: [], image: null });
-      })
-      .catch((err) => console.error('Eroare la editare:', err));
+        .then((res) => res.json())
+        .then((data) => {
+          // Update food list with the new data
+          setPersonalFoods(data.map((food) => ({
+            ...food,
+            imageUrl: `${food.imageUrl}?t=${new Date().getTime()}`, // Add cache-busting query string
+          })));
+          setEditingFoodId(null);
+          setEditFood({ name: '', expirationDate: '', categories: [], image: null });
+        })
+        .catch((err) => console.error('Eroare la editare:', err));
   };
 
   // Functions for handling unavailable foods

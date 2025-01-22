@@ -159,11 +159,11 @@ const FoodTable = ({
                   <>
                     <td style={{ border: '1px solid #ddd', padding: '8px', width: '120px' }}>
                       {food.imageUrl ? (
-                        <ExpandableImage
-                          src={`http://localhost:5000${food.imageUrl}`}
-                          alt={food.name}
-                          className="w-full h-32 object-cover rounded"
-                        />
+                          <ExpandableImage
+                              src={`http://localhost:5000${food.imageUrl}?t=${new Date().getTime()}`} // Added query string for cache busting
+                              alt={food.name}
+                              className="w-full h-32 object-cover rounded"
+                          />
                       ) : (
                         <div style={{
                           width: '100%',
