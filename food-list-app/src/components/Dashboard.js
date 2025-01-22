@@ -21,6 +21,7 @@ function Dashboard() {
   const [editingFoodId, setEditingFoodId] = useState(null);
   const [availableEditingId, setAvailableEditingId] = useState(null);
   const [editFood, setEditFood] = useState({
+    image: '',
     name: '',
     expirationDate: '',
     categories: []
