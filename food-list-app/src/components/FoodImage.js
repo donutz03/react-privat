@@ -4,7 +4,7 @@ const FoodImage = ({ imageUrl }) => {
     return (
       <div className="relative w-full h-32">
         <img
-          src={`http://localhost:5000${imageUrl}`}
+          src={`${imageUrl}`}
           alt="Food"
           className="w-full h-full object-cover rounded-lg"
         />

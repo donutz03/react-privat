@@ -40,7 +40,7 @@ function Dashboard() {
   const loadAllFoods = useCallback(async () => {
     try {
       // Load available foods
-      const availableResponse = await fetch(`http://localhost:5000/foods/${currentUser}`);
+      const availableResponse = await fetch(`/foods/${currentUser}`);
       if (!availableResponse.ok) {
         throw new Error('Eroare la încărcarea produselor disponibile');
       }
@@ -48,7 +48,7 @@ function Dashboard() {
       setPersonalFoods(Array.isArray(availableData) ? availableData : []);
 
       // Load unavailable foods
-      const unavailableResponse = await fetch(`http://localhost:5000/foods/unavailable/${currentUser}`);
+      const unavailableResponse = await fetch(`/foods/unavailable/${currentUser}`);
       if (!unavailableResponse.ok) {
         throw new Error('Eroare la încărcarea produselor indisponibile');
       }
@@ -56,7 +56,7 @@ function Dashboard() {
       setSharedFoods(Array.isArray(unavailableData) ? unavailableData : []);
 
       // Load expired foods
-      const expiredResponse = await fetch(`http://localhost:5000/foods/expired/${currentUser}`);
+      const expiredResponse = await fetch(`/foods/expired/${currentUser}`);
       if (!expiredResponse.ok) {
         throw new Error('Eroare la încărcarea produselor expirate');
       }
@@ -64,7 +64,7 @@ function Dashboard() {
       setExpiredFoods(Array.isArray(expiredData) ? expiredData : []);
 
       // Load categories
-      const categoriesResponse = await fetch('http://localhost:5000/categories');
+      const categoriesResponse = await fetch('/categories');
       if (!categoriesResponse.ok) {
         throw new Error('Eroare la încărcarea categoriilor');
       }
@@ -80,7 +80,7 @@ function Dashboard() {
     if (!currentUser) return;
     
     try {
-      const response = await fetch(`http://localhost:5000/foods/check-expired/${currentUser}`, {
+      const response = await fetch(`/foods/check-expired/${currentUser}`, {
         method: 'POST'
       });
       
@@ -154,7 +154,7 @@ function Dashboard() {
     }
   
     // Send POST request to add food
-    fetch(`http://localhost:5000/foods/${currentUser}`, {
+    fetch(`/foods/${currentUser}`, {
       method: 'POST',
       body: formData
     })
@@ -180,7 +180,7 @@ function Dashboard() {
 
   // Delete food functionality
   const deleteFood = (foodId) => {
-    fetch(`http://localhost:5000/foods/${currentUser}/${foodId}`, {
+    fetch(`/foods/${currentUser}/${foodId}`, {
       method: 'DELETE',
     })
       .then((res) => res.json())
@@ -204,7 +204,7 @@ function Dashboard() {
       formData.append('image', editFood.image);
     }
 
-    fetch(`http://localhost:5000/foods/${currentUser}/${foodId}`, {
+    fetch(`/foods/${currentUser}/${foodId}`, {
       method: 'PUT',
       body: formData,
     })
@@ -223,7 +223,7 @@ function Dashboard() {
 
   // Functions for handling unavailable foods
   const deleteUnavailableFood = (foodId) => {
-    fetch(`http://localhost:5000/foods/unavailable/${currentUser}/${foodId}`, {
+    fetch(`/foods/unavailable/${currentUser}/${foodId}`, {
       method: 'DELETE',
     })
       .then((res) => res.json())
@@ -246,7 +246,7 @@ function Dashboard() {
       formData.append('image', editFood.image);
     }
   
-    fetch(`http://localhost:5000/foods/unavailable/${currentUser}/${foodId}`, {
+    fetch(`/foods/unavailable/${currentUser}/${foodId}`, {
       method: 'PUT',
       body: formData
     })
@@ -261,7 +261,7 @@ function Dashboard() {
 
   // Toggle food availability
   const handleMarkAvailability = (foodId, makeAvailable = true) => {
-    fetch(`http://localhost:5000/foods/${currentUser}/toggle-availability/${foodId}`, {
+    fetch(`/foods/${currentUser}/toggle-availability/${foodId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ makeAvailable })

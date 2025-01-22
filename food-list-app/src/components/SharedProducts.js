@@ -28,7 +28,7 @@ const ProductCard = ({ product, onClaim, friendUsername }) => (
     <div style={{ marginBottom: '12px' }}>
       {product.imageUrl ? (
         <ExpandableImage
-          src={`http://localhost:5000${product.imageUrl}`}
+          src={`${product.imageUrl}`}
           alt={product.name}
           className="w-full h-48 object-cover rounded-lg"
         />
@@ -130,7 +130,7 @@ const SharedProducts = () => {
 
   const fetchSharedProducts = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/friends/${currentUser}/shared-products`);
+      const response = await fetch(`/friends/${currentUser}/shared-products`);
       if (!response.ok) {
         throw new Error('Failed to fetch shared products');
       }
@@ -146,7 +146,7 @@ const SharedProducts = () => {
 
   const handleClaimProduct = async (friendUsername, productId) => {
     try {
-      const response = await fetch(`http://localhost:5000/friends/${friendUsername}/claim/${productId}`, {
+      const response = await fetch(`/friends/${friendUsername}/claim/${productId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

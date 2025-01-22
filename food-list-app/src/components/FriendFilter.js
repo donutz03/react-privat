@@ -5,7 +5,7 @@ const FriendFilter = ({ onFilterChange }) => {
   const [selectedTags, setSelectedTags] = useState([]);
   
   useEffect(() => {
-    fetch('http://localhost:5000/friends/tags')
+    fetch('/friends/tags')
       .then(res => res.json())
       .then(data => setAvailableTags(data))
       .catch(error => console.error('Eroare la încărcarea etichetelor:', error));

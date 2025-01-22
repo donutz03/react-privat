@@ -1,7 +1,7 @@
 const ExpiredProductsTable = ({ foods, currentUser, setExpiredFoods }) => {
     const handleDelete = async (foodId) => {
       try {
-        const response = await fetch(`http://localhost:5000/foods/expired/${currentUser}/${foodId}`, {
+        const response = await fetch(`/foods/expired/${currentUser}/${foodId}`, {
           method: 'DELETE',
         });
         
@@ -18,7 +18,7 @@ const ExpiredProductsTable = ({ foods, currentUser, setExpiredFoods }) => {
   
     const handleDeleteAllExpired = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/foods/expired/${currentUser}`, {
+        const response = await fetch(`/foods/expired/${currentUser}`, {
           method: 'DELETE',
         });
         

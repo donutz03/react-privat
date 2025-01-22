@@ -37,7 +37,7 @@ const SocialShare = ({ foods }) => {
 
             if (food.imageUrl) {
                 const img = document.createElement('img');
-                img.src = `http://localhost:5000${food.imageUrl}`;
+                img.src = `${food.imageUrl}`;
                 img.crossOrigin = 'anonymous';
                 img.style.width = '100%';
                 img.style.height = '200px';

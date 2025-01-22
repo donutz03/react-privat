@@ -94,7 +94,7 @@ const FoodTable = ({
                         />
                         {editFood.image || food.imageUrl ? (
                           <ExpandableImage
-                            src={editFood.image ? URL.createObjectURL(editFood.image) : `http://localhost:5000${food.imageUrl}`}
+                            src={editFood.image ? URL.createObjectURL(editFood.image) : `${food.imageUrl}`}
                             alt="Food preview"
                             className="w-full h-full object-cover rounded"
                           />
@@ -160,7 +160,7 @@ const FoodTable = ({
                     <td style={{ border: '1px solid #ddd', padding: '8px', width: '120px' }}>
                       {food.imageUrl ? (
                           <ExpandableImage
-                              src={`http://localhost:5000${food.imageUrl}?t=${new Date().getTime()}`} // Added query string for cache busting
+                              src={`${food.imageUrl}?t=${new Date().getTime()}`} // Added query string for cache busting
                               alt={food.name}
                               className="w-full h-32 object-cover rounded"
                           />

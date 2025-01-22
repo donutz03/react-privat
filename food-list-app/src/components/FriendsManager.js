@@ -36,7 +36,7 @@ const FriendsManager = () => {
   // Fetch all friends data
   const fetchFriendsData = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/friends/${currentUser}`);
+      const response = await fetch(`/friends/${currentUser}`);
       const data = await response.json();
       
       setFriends(data.friends || {});
@@ -53,7 +53,7 @@ const FriendsManager = () => {
   // Fetch available tags for friend categorization
   const fetchAvailableTags = async () => {
     try {
-      const response = await fetch('http://localhost:5000/friends/tags');
+      const response = await fetch('/friends/tags');
       const data = await response.json();
       setAvailableTags(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -71,7 +71,7 @@ const FriendsManager = () => {
 
     try {
       const queryParams = selectedTags.join(',');
-      const response = await fetch(`http://localhost:5000/friends/${currentUser}/filter?tags=${queryParams}`);
+      const response = await fetch(`/friends/${currentUser}/filter?tags=${queryParams}`);
       const data = await response.json();
       setFilteredFriends(data.friends);
     } catch (err) {
@@ -95,7 +95,7 @@ const FriendsManager = () => {
     }
   
     try {
-      const response = await fetch(`http://localhost:5000/friends/${currentUser}/add`, {
+      const response = await fetch(`/friends/${currentUser}/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ friendUsername: newFriend })
@@ -133,7 +133,7 @@ const FriendsManager = () => {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/friends/${currentUser}/friends/${friendUsername}/tags`, 
+        `/friends/${currentUser}/friends/${friendUsername}/tags`, 
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -161,7 +161,7 @@ const FriendsManager = () => {
       : [...sharedListAccess, friendUsername];
 
     try {
-      const response = await fetch(`http://localhost:5000/friends/${currentUser}/share`, {
+      const response = await fetch(`/friends/${currentUser}/share`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ selectedFriends: newAccess })
@@ -194,7 +194,7 @@ const FriendsManager = () => {
     }
   
     try {
-      const response = await fetch(`http://localhost:5000/friends/${currentUser}/groups`, {
+      const response = await fetch(`/friends/${currentUser}/groups`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
