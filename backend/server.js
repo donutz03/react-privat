@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const config = require('./config/config');
+const path = require('path');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -25,5 +26,10 @@ app.use('/auth', authRoutes);
 app.use('/foods', foodsRoutes);
 app.use('/categories', categoriesRoutes);
 app.use('/friends', friendsRoutes);
+
+app.use(express.static(path.join(__dirname, 'food-list-app/build')));
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'food-list-app/build', 'index.html'));
+});
 
 app.listen(config.PORT, () => console.log(`Serverul rulează pe http://localhost:${config.PORT}`));
